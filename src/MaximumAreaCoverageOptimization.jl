@@ -1,5 +1,6 @@
 module MaximumAreaCoverageOptimization
 
-# Write your package code here.
+export greet_my_package
+include("functions.jl")
 
 end

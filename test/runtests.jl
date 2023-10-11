@@ -2,5 +2,5 @@ using MaximumAreaCoverageOptimization
 using Test
 
 @testset "MaximumAreaCoverageOptimization.jl" begin
-    # Write your tests here.
+    @test MaximumAreaCoverageOptimization.greet_my_package() != "Hello world!"
 end
