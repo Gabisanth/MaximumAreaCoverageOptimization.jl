@@ -1,3 +1,3 @@
 function greet_my_package()
-    println("Hello!")
+    return("Hello!")
 end
