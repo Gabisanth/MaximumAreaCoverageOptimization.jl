@@ -15,8 +15,8 @@ kf = 1.0                                         # motor force constant (motor f
 km = 0.0245                                      # motor torque constant (motor torque = km*u)
 
 # MPC optimization
-hor = 2.0          # Prediction horizon length
-dt = 0.2         # Time-step length per horizon
+hor = 2.0           # Prediction horizon length
+dt = 0.2           # Time-step length per horizon
 Nt = Int(hor/dt)+1  # Number of timesteps per horizon
 R_D = 10.0          # Danger radius
 R_C = 1.0           # Collision radius
@@ -28,25 +28,13 @@ Nm = 5              # Number of applied time-steps
 Xs= [] #Contains the trajectories for each UAV at each epoch.
 N=1 #number of UAVs.
 
-x_val = 20
-y_val = 20
+x_val = 20.2
+y_val = 20.1
 z_val = 10
 
 #Give the initial and final(target) conditions.
-global x_start = [RBState([5.0, 0.0, 5.95876796], UnitQuaternion(I), zeros(3), zeros(3))]#TDM_TRAJECTORY_opt.GreensPb_to_ALTRO(single_input_pb[q])
-global x_final = [RBState([19.0461,3.13291,16.673228637], UnitQuaternion(I), zeros(3), zeros(3)), 
-RBState([25.9461, 1.30991, 22.36981], UnitQuaternion(I), zeros(3), zeros(3)),
-RBState([32.878799999, 0.901127, 28.4035], UnitQuaternion(I), zeros(3), zeros(3)),
-RBState([41.88972858, -0.03456748, 29.9993], UnitQuaternion(I), zeros(3), zeros(3)),
-RBState([58.91081, -1.6249, 30.0], UnitQuaternion(I), zeros(3), zeros(3)),
-RBState([76.3157, 0.339013,30.0], UnitQuaternion(I), zeros(3), zeros(3)),
-RBState([94.18215, -0.0998562, 30.0], UnitQuaternion(I), zeros(3), zeros(3)),
-RBState([112.0917355, -1.68504, 30.0], UnitQuaternion(I), zeros(3), zeros(3)),
-RBState([128.8088698, 3.39493165, 30.0], UnitQuaternion(I), zeros(3), zeros(3))]
-
-# global x_start = [RBState([0.0, 0.0, 10.0], UnitQuaternion(I), zeros(3), zeros(3))]#TDM_TRAJECTORY_opt.GreensPb_to_ALTRO(single_input_pb[q])
-# global x_final = [RBState([20,20,10.0], UnitQuaternion(I), zeros(3), zeros(3)), 
-# RBState([30,30.0,10.0], UnitQuaternion(I), zeros(3), zeros(3))]
+global x_start = [RBState([0.0, 0.0, 10.0], UnitQuaternion(I), zeros(3), zeros(3))]#TDM_TRAJECTORY_opt.GreensPb_to_ALTRO(single_input_pb[q])
+global x_final = [RBState([x_val, y_val, z_val], UnitQuaternion(I), zeros(3), zeros(3))]#TDM_TRAJECTORY_opt.GreensPb_to_ALTRO(single_output_pb[q]) #x_final contains a list of the 13 final states for each drone in the current epoch.
 
 
 #Setup vector of trajectory problem objects for each drone.
@@ -58,7 +46,6 @@ end
 #Optimize the trajectories.
 global total_converge = false # Check if all MAVs have converged
 global collision = Vector{Any}(undef,N) # Vector describing collision constraints
-global target_counter = 1;
 
 for i in 1:N
     global collision[i] = [false,[]]
@@ -78,27 +65,14 @@ while total_converge == false
             global total_converge = false
             t = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt,Nm,collision[i])
         else
-            if TDM_TRAJECTORY_opt.converge(MAV) > 0.3
+            if TDM_TRAJECTORY_opt.converge(MAV) > 0.5
                 global total_converge = false    
                 t = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt,Nm,collision[i])
-            else
-                global target_counter += 1
-                println("This is the state at end of section 1: ")
-                println(MAV.StateHistory[end])
-                if target_counter > length(x_final)
-                    total_coverge = true
-                else
-                    total_converge = false
-                    global MAVs[i].TargetState = x_final[target_counter]
-                    t = TDM_TRAJECTORY_opt.optimize(MAVs[i],hor,Nt,Nm,collision[i])
-                    
-                end
+                print(t)
             end
         end
         println("Optimization for MAV no. $i"); # for testing
     end
-
-
 
     # Check for collision
     # for i in 1:N
@@ -116,31 +90,29 @@ while total_converge == false
     #         end
     #     end
     # end
-
-    # if countIter > 100
-    #     println("Over 100 MPC trails")
-    #     break
-    # end
-
+    if countIter > 100
+        println("Over 100 MPC trails")
+        break
+    end
 end
 
-# # Normalise state histories
-# global longest = maximum([length(MAVs[i].StateHistory) for i in 1:N])
-# for i in 1:N
-#     MAV = MAVs[i]
-#     size = length(MAV.StateHistory)
-#     if size < longest
-#         println("There is $i be increased in statehistory length")
-#         for j in 1:longest-size
-#             push!(MAV.StateHistory,MAV.StateHistory[end])
-#         end
-#     end
-# end
+# Normalise state histories
+global longest = maximum([length(MAVs[i].StateHistory) for i in 1:N])
+for i in 1:N
+    MAV = MAVs[i]
+    size = length(MAV.StateHistory)
+    if size < longest
+        println("There is $i be increased in statehistory length")
+        for j in 1:longest-size
+            push!(MAV.StateHistory,MAV.StateHistory[end])
+        end
+    end
+end
 
 # Extract trajectories
 global X = []
 for i in 1:N  # UAV index i
-    local MAV = MAVs[i]
+    MAV = MAVs[i]
     x = zeros(Float64, (length(MAV.StateHistory),13)) # col1-3 (position); col4-7 (quaternion); col8-10(linear velocity); col11-13(angular velocity)
     for j in 1:length(MAV.StateHistory) # trajectory optimization index j (row)
         x[j,:] = MAV.StateHistory[j]    # StateHistory content(column)
@@ -155,7 +127,7 @@ push!(Xs, X)
 #The state output is now the next start state for the next epoch. We will call this temporary state conatainer junction_state.
 junction_state = Vector{RBState}()
 for i in 1:N
-    push!(junction_state, RBState(X[i][end,:]))
+    push!(junction_state, RBState(X[i][end,:][1:3], UnitQuaternion(I), zeros(3), zeros(3)))
 end
 
 global x_start = junction_state
@@ -163,10 +135,8 @@ global x_start = junction_state
 
 
 
-# start = MAVs[1].StateHistory[1]
-final = MAVs[1].StateHistory[end]
-# print(start[1:3]) #Display the initial xyz position.
-print(final[1:3]) #Display the final xyz position.
+vec = MAVs[1].StateHistory[1]
+print(vec[1])
 
 
 
