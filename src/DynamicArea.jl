@@ -15,7 +15,7 @@ for i in 1:grid_size[1], j in 1:grid_size[2]
     if rand() < forest_density #Value can be chosen based on the density of the forest. If set to 0.7, it means 70% of forest is trees.
         grid[i,j] = TREE
     else
-        grid[i,j] = EMPTY
+        grid[i,j] = EMPTY 
     end
 end
 

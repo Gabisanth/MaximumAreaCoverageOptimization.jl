@@ -169,15 +169,15 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4
     num_states = n
     # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
-    weight_Q = 1 #1e-10 #Penalise the sum of state errors in the states.
+    weight_Q = 1.0 #1e-10 #Penalise the sum of state errors in the states.
     weigth_R = 1.0 #1e-10 #Penalise controller effort.
     weigth_Qf = 1.0 #Penalise current state error.
     Q = Diagonal(@SVector fill(weight_Q, num_states))
-    # Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    #Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     R = Diagonal(@SVector fill(weigth_R, m))
     Qf = Diagonal(@SVector fill(weigth_Qf, num_states)) #xf: 0,0,0, Qf 1,1,1
     # Qf = Diagonal(SA[weigth_Qf, weigth_Qf, weigth_Qf, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) #xf: 0,0,0, Qf 1,1,1
-    objective = LQRObjective(Q, R, Qf, xf, Nt)  
+    objective = LQRObjective(Q, R, Qf, xf, Nt) 
 
 
     # Constraints
@@ -209,10 +209,8 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
         control_guess[:,i] = hover                     # 13 * number of (timesteps-1)
     end
 
-    #state_guess[:,Nt] = xf                             # 13 * number of timesteps
-
-    initial_states!(prob, state_guess)
-    #initial_controls!(prob, control_guess)
+    # initial_states!(prob, state_guess)
+    # initial_controls!(prob, control_guess)
     
     altro = ALTROSolver(prob)
 
@@ -230,7 +228,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # end
 
     push!(MAV.StateHistory, X[2]) # We apply the next suggested control input, so we want the next state after this control input has been applied.
-    return X #altro.stats.tsolve # Returns the total save time in milliseconds.
+    return hover #altro.stats.tsolve # Returns the total save time in milliseconds.
 end
 
 
