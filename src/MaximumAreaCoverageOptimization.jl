@@ -25,7 +25,7 @@ function equally_spaced_coordinates(pos_start, pos_final, N)
     return coordinates
 end
 
-# Example usage:
+# Example usage: 
 x1, y1, z1 = 1, 1, 1
 x2, y2, z2 = 4, 4, 4
 N = 3
