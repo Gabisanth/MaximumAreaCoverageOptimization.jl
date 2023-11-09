@@ -3,6 +3,17 @@ uuid = "6afd5d01-1bb0-4639-a280-b48c89302009"
 authors = ["Gabisanth Seyon"]
 version = "1.0.0-DEV"
 
+[deps]
+Altro = "5dcf52e5-e2fb-48e0-b826-96f46d2e3e73"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+RobotDynamics = "38ceca67-d8d3-44e8-9852-78a5596522e1"
+RobotZoo = "74be38bb-dcc2-4b9e-baf3-d6373cd95f10"
+Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TrajectoryOptimization = "c79d492b-0548-5874-b488-5a62c1d9d0ca"
+
 [compat]
 julia = "1"
 
