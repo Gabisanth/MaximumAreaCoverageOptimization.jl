@@ -6,6 +6,24 @@ using RobotZoo: Quadrotor
 using RobotDynamics
 using Plots
 
+function equally_spaced_coordinates(pos_start, pos_final, N)
+    x1 = pos_final[1]
+    y1 = pos_final[2]
+    z1 = pos_final[3]
+    delta_x = pos_final[1] - pos_start[1]
+    delta_y = pos_final[2] - pos_start[2]
+    delta_z = pos_final[3] - pos_start[3]
+    delta_x_spacing = delta_x / N
+    delta_y_spacing = delta_y / N
+    delta_z_spacing = delta_z / N
+    coordinates = zeros(N,3)
+    for i in 1:N
+        coordinates[i,1:3] = [x1 + i * delta_x_spacing, y1 + i * delta_y_spacing, z1 + i * delta_z_spacing]
+    end
+
+    return coordinates
+end
+
 # Drone Parameters
 mass = 0.5                                       # mass of quadrotor
 J = Diagonal(@SVector[0.0023, 0.0023, 0.004])    # inertia matrix                    
@@ -33,8 +51,8 @@ y_val = 20
 z_val = 10
 
 #Give the initial and final(target) conditions.
-global x_start = [RBState([5.0, 0.0, 5.95876796], UnitQuaternion(I), zeros(3), zeros(3))]#TDM_TRAJECTORY_opt.GreensPb_to_ALTRO(single_input_pb[q])
-global x_final = [RBState([19.0461,3.13291,16.673228637], UnitQuaternion(I), zeros(3), zeros(3)), 
+global start = [RBState([5.0, 0.0, 5.95876796], UnitQuaternion(I), zeros(3), zeros(3))]#TDM_TRAJECTORY_opt.GreensPb_to_ALTRO(single_input_pb[q])
+global targets = [RBState([19.0461,3.13291,16.673228637], UnitQuaternion(I), zeros(3), zeros(3)), 
 RBState([25.9461, 1.30991, 22.36981], UnitQuaternion(I), zeros(3), zeros(3)),
 RBState([32.878799999, 0.901127, 28.4035], UnitQuaternion(I), zeros(3), zeros(3)),
 RBState([41.88972858, -0.03456748, 29.9993], UnitQuaternion(I), zeros(3), zeros(3)),
@@ -44,6 +62,9 @@ RBState([94.18215, -0.0998562, 30.0], UnitQuaternion(I), zeros(3), zeros(3)),
 RBState([112.0917355, -1.68504, 30.0], UnitQuaternion(I), zeros(3), zeros(3)),
 RBState([128.8088698, 3.39493165, 30.0], UnitQuaternion(I), zeros(3), zeros(3))]
 
+
+
+
 # global x_start = [RBState([0.0, 0.0, 10.0], UnitQuaternion(I), zeros(3), zeros(3))]#TDM_TRAJECTORY_opt.GreensPb_to_ALTRO(single_input_pb[q])
 # global x_final = [RBState([20,20,10.0], UnitQuaternion(I), zeros(3), zeros(3)), 
 # RBState([30,30.0,10.0], UnitQuaternion(I), zeros(3), zeros(3))]
@@ -52,13 +73,16 @@ RBState([128.8088698, 3.39493165, 30.0], UnitQuaternion(I), zeros(3), zeros(3))]
 #Setup vector of trajectory problem objects for each drone.
 global MAVs = Vector{TDM_TRAJECTORY_opt.Trajectory_Problem}()
 for i in 1:N
-    push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i]))
+    push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,start[i],targets[i]))
 end
 
 #Optimize the trajectories.
 global total_converge = false # Check if all MAVs have converged
 global collision = Vector{Any}(undef,N) # Vector describing collision constraints
-global target_counter = 1;
+global virtual_target_counter = 1
+global num_of_virtual_targets = 30
+global new_target = true
+global real_target_counter = 1
 
 for i in 1:N
     global collision[i] = [false,[]]
@@ -69,33 +93,27 @@ global countIter = 0
 while total_converge == false
     global countIter += 1
     println("-----------------------------Unconverged iteration No. $countIter -----------------------------")
-    global total_converge = true
+
+    if new_target == true
+        if real_target_counter > length(targets)
+            break
+        end
+        x_final = targets[real_target_counter]
+        global virtual_targets = equally_spaced_coordinates(MAVs[1].StateHistory[end][1:3],x_final[1:3], num_of_virtual_targets)
+        global new_target = false
+        global virtual_target_counter = 1
+        global real_target_counter += 1
+    end
     
     # Optimize if MAV has not converged to final position
     for i in 1:N
-        local MAV = MAVs[i]
-        if countIter == 1
-            global total_converge = false
-            t = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt,Nm,collision[i])
-        else
-            if TDM_TRAJECTORY_opt.converge(MAV) > 0.3
-                global total_converge = false    
-                t = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt,Nm,collision[i])
-            else
-                global target_counter += 1
-                println("This is the state at end of section 1: ")
-                println(MAV.StateHistory[end])
-                if target_counter > length(x_final)
-                    total_coverge = true
-                else
-                    total_converge = false
-                    global MAVs[i].TargetState = x_final[target_counter]
-                    t = TDM_TRAJECTORY_opt.optimize(MAVs[i],hor,Nt,Nm,collision[i])
-                    
-                end
-            end
-        end
-        println("Optimization for MAV no. $i"); # for testing
+        global MAVs[i].TargetState = RBState(virtual_targets[virtual_target_counter,1:3], UnitQuaternion(I), zeros(3), zeros(3))
+        t = TDM_TRAJECTORY_opt.optimize(MAVs[i],hor,Nt,Nm,collision[i])
+    end
+
+    virtual_target_counter += 1
+    if virtual_target_counter > num_of_virtual_targets
+        global new_target = true
     end
 
 
@@ -166,7 +184,7 @@ global x_start = junction_state
 # start = MAVs[1].StateHistory[1]
 final = MAVs[1].StateHistory[end]
 # print(start[1:3]) #Display the initial xyz position.
-print(final[1:3]) #Display the final xyz position.
+println(final[1:3]) #Display the final xyz position.
 
 
 
@@ -228,6 +246,23 @@ for j in eachindex(Xs)                         # epoch index
         end
     end
 end
+
+
+
+#Plotting the targets for visually evaluating performance of the controller.
+x = []
+y = []
+z = []
+
+for i in 1:length(targets)
+    append!(x,targets[i][1])
+    append!(y,targets[i][2])
+    append!(z,targets[i][3])
+end
+
+plot!(x,y,z, seriestype=:scatter, color = "red", markersize = 2, label = "Targets")
+
+
 scal = r
 plot!(grid = true, gridwidth = 3, 
     legend=:outertopright,
