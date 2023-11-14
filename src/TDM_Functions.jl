@@ -3,7 +3,6 @@
 module TDM_Functions
 include("Base_Functions.jl")
 using Plots
-#plotlyjs()
 Plots.default(show = true)
 using Random
 

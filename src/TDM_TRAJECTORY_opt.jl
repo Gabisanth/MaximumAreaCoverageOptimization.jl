@@ -239,7 +239,8 @@ end
 
 
 function GreensPb_to_ALTRO(GreensPb)
-    return MADS_to_ALTRO(GreensPb_to_MADS(GreensPb))
+    #returns -> RBState([x_val, y_val, z_val], UnitQuaternion(I), zeros(3), zeros(3))
+    return MADS_to_ALTRO(GreensPb_to_MADS(GreensPb)) #convert GreensPb to MADS, then convert the MADS to ALTRO
 end
 
 function GreensPb_to_MADS(GreensPb)
