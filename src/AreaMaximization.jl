@@ -64,8 +64,8 @@ global STATIC_input = TDM_Functions.allocate_even_circles(5.0, N, 5.0)          
 
 # Obtain and show initial set of circles 
 ini_circles = Base_Functions.make_circles(STATIC_input) 
-plot()
-TDM_Functions.show_epoch(ini_circles, cir_domain.Domain_History[1]) 
+# plot()
+# TDM_Functions.show_epoch(ini_circles, cir_domain.Domain_History[1]) 
 
 
 global circles_pool = ini_circles          # Initialize circle pool

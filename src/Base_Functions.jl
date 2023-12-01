@@ -212,7 +212,7 @@ function intersection(A,B)
         return nothing
     else
         a = (d^2+A.R^2-B.R^2)/(2*d)
-        h = sqrt((A.R^2-a^2))
+        h = sqrt(abs(A.R^2-a^2))
 
         varx = A.x + a*(B.x-A.x)/d
         vary = A.y + a*(B.y-A.y)/d

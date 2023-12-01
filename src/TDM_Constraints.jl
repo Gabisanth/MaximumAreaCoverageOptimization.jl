@@ -21,7 +21,7 @@ function cons2(x)
     this_group = Base_Functions.make_circles(x)
     
     for i in eachindex(this_group)
-        if Base_Functions.pure_contained(this_group[i], pre_optimized_circles[i]) !== nothing
+        if Base_Functions.pure_contained(this_group[i], pre_optimized_circles_MADS[i]) !== nothing
             return false
         end
     end

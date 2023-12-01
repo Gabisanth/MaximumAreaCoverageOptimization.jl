@@ -75,7 +75,7 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter, r_min, r_max, d_lim, 
         # end
         
 
-        if var
+        if false
             # SetInitialPoint(p, new_input)
             # BumpIterationLimit(p, i=N_iter)
             # println("Non-optimal solution (a circle is contained). REINITIALIZING...")

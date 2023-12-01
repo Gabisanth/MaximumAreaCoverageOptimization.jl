@@ -183,7 +183,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # Constraints
     cons = ConstraintList(n, m, Nt)
     x_min = [-200.0,-200.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -2.0,-2.0,-2.0,  -1.5,-1.5,-1.5]
-    x_max = [200.0,200.0,50.0,  1.0,1.0,1.0,1.0,  2.0,2.0,2.0,  1.5,1.5,1.5]
+    x_max = [200.0,200.0, 20.0,  1.0,1.0,1.0,1.0,  2.0,2.0,2.0,  1.5,1.5,1.5]
 
     add_constraint!(cons, BoundConstraint(n,m, x_min=x_min, x_max=x_max), 1:Nt)
 
