@@ -1,30 +1,38 @@
-#Visualising UAV attitude.
+#Visualising UAV attitude. Code adapted from ChatGPT results.
 
 using Plots
 
+plotlyjs() #offers better interactivity than GR.
 
-# Example data of 13 states (replace this with your drone's states)
-states = rand(13, 13)  # 13 states each containing 13 values
+# Sample UAV states (replace this with your actual UAV states)
+states = rand(13)  # Replace with your 13 states
 
-# Extracting position data (x, y, z)
-positions = states[:, 1:3]  # Assuming the first 3 states represent x, y, z coordinates
+# Extract position and orientation states
+x, y, z = states[1:3]
+roll, pitch, yaw = states[4:6]
 
-# Extracting orientation data (roll, pitch, yaw)
-orientations = states[:, 4:6]  # Assuming states 4:6 represent roll, pitch, yaw
+# Set lengths for representing the UAV body
+body_length = 1.0
+body_width = 0.5
+body_height = 0.0
 
-# Extract x, y, z coordinates for positions
-x_coords = positions[:, 1]
-y_coords = positions[:, 2]
-z_coords = positions[:, 3]
+# Compute body vertices based on orientation and position
+body_vertices = [
+    [x + body_length * cos(yaw), y + body_length * sin(yaw), z],
+    [x + 0.5 * body_width * cos(yaw + pi / 2), y + 0.5 * body_width * sin(yaw + pi / 2), z],
+    [x - 0.5 * body_width * cos(yaw + pi / 2), y - 0.5 * body_width * sin(yaw + pi / 2), z],
+    [x - body_length * cos(yaw), y - body_length * sin(yaw), z],
+    [x + body_length * cos(yaw), y + body_length * sin(yaw), z + body_height],
+    [x + 0.5 * body_width * cos(yaw + pi / 2), y + 0.5 * body_width * sin(yaw + pi / 2), z + body_height],
+    [x - 0.5 * body_width * cos(yaw + pi / 2), y - 0.5 * body_width * sin(yaw + pi / 2), z + body_height],
+    [x - body_length * cos(yaw), y - body_length * sin(yaw), z + body_height]
+]
 
-# Create a quiver plot to represent orientation
-quiver_data = [(x_coords[i], y_coords[i], z_coords[i], cos(orientations[i, 3]), sin(orientations[i, 3]), 0) for i in 1:size(states, 1)]
+# Create a 3D plot
+plot3d(
+    xlabel = "X-axis", ylabel = "Y-axis", zlabel = "Z-axis",
+    xlims = (-10, 10), ylims = (-10, 10), zlims = (-10, 10), legend = false
+)
 
-# Plot the trajectory in 3D along with orientation arrows
-plot3d(x_coords, y_coords, z_coords, line = (:blue, 3), marker = (:circle, 5))
-quiver!([(x, y, z, u, v, w) for (x, y, z, u, v, w) in quiver_data],
-        quiver = (1, "black", "arrow"))
-xlabel!("X-axis")
-ylabel!("Y-axis")
-zlabel!("Z-axis")
-title!("Drone Trajectory with Orientation")
+# Plot the UAV body
+plot!([v[1] for v in body_vertices], [v[2] for v in body_vertices], [v[3] for v in body_vertices], color = :blue)
