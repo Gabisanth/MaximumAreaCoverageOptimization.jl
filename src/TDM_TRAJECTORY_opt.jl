@@ -193,6 +193,10 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
         add_constraint!(cons, SphereConstraint(n, [x], [y], [z], [1.5]), 1:Nt)
     end
 
+    # # #Add goal constraint.
+    goalcon = GoalConstraint(xf, 1:3)
+    add_constraint!(cons, goalcon, Nt)  # add to the last time step
+
     # With random initial positions (with x0=x0)
     prob = Problem(MAV.Model, objective, x0, tf, xf = xf, constraints=cons)
 
