@@ -168,24 +168,28 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
 
     n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4
     num_states = n
+    num_controls = m#Add slack control variable for max_height soft constraint.
     # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
     weight_Q = 1 #1e-10 #Penalise the sum of state errors in the states.
     weigth_R = 1.0 #1e-10 #Penalise controller effort.
     weigth_Qf = 1.0 #Penalise current state error.
     Q = Diagonal(@SVector fill(weight_Q, num_states))
     # Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    R = Diagonal(@SVector fill(weigth_R, m))
+    R = Diagonal(@SVector fill(weigth_R, num_controls))
     Qf = Diagonal(@SVector fill(weigth_Qf, num_states)) #xf: 0,0,0, Qf 1,1,1
     # Qf = Diagonal(SA[weigth_Qf, weigth_Qf, weigth_Qf, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) #xf: 0,0,0, Qf 1,1,1
     objective = LQRObjective(Q, R, Qf, xf, Nt)  
 
 
     # Constraints
-    cons = ConstraintList(n, m, Nt)
+    cons = ConstraintList(num_states, num_controls, Nt)
     x_min = [-200.0,-200.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -2.0,-2.0,-2.0,  -1.5,-1.5,-1.5]
     x_max = [200.0,200.0, 20.0,  1.0,1.0,1.0,1.0,  2.0,2.0,2.0,  1.5,1.5,1.5]
 
-    add_constraint!(cons, BoundConstraint(n,m, x_min=x_min, x_max=x_max), 1:Nt)
+    u_min = [0.0, 0.0, 0.0, 0.0]
+    u_max = [2.0,2.0,2.0,2.0]
+
+    add_constraint!(cons, BoundConstraint(num_states,num_controls, x_min=x_min, x_max=x_max, u_min = u_min, u_max=u_max), 1:Nt)
 
     # Add collision constraints if present
     if collision[1] == true
@@ -193,19 +197,18 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
         add_constraint!(cons, SphereConstraint(n, [x], [y], [z], [1.5]), 1:Nt)
     end
 
-    # # #Add goal constraint.
-    goalcon = GoalConstraint(xf, 1:3)
-    add_constraint!(cons, goalcon, Nt)  # add to the last time step
+    # #Add goal constraint.
+    # goalcon = GoalConstraint(xf, 1:3)
+    # add_constraint!(cons, goalcon, Nt)  # add to the last time step
 
     # With random initial positions (with x0=x0)
     prob = Problem(MAV.Model, objective, x0, tf, xf = xf, constraints=cons)
 
 
     # State initialization: linear trajectory from start to end
-    state_guess = zeros(Float64, (n,Nt))
+    state_guess = zeros(Float64, (num_states,Nt))
     # Control initialization: hover
-    control_guess = zeros(Float64, (m,Nt))
-
+    control_guess = zeros(Float64, (num_controls,Nt))
     hover = zeros(MAV.Model)[2]
 
     for i in 1:Nt
@@ -225,7 +228,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     solve!(altro);
 
     X = states(altro);
-    U = controls(altro);
+    #U = controls(altro);
 
     MAV.PredictedStates = X
 

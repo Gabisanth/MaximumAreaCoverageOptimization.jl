@@ -30,7 +30,7 @@ h_min = 1            # (user-defined) Flying altitude lower bound (exclude initi
 h_max = 20.0           # (user-defined) Flying altitude upper bound
 r_min = h_min * tan(FOV/2) # (user-defined, replaced later)
 r_max = h_max * tan(FOV/2) 
-d_lim = 2           # (user-defined) limitations on displacement of group UAV induced from optimization 
+d_lim = 9.2           # (user-defined) limitations on displacement of group UAV induced from optimization. 
 N_iter = 100         # (use-defined) set the limit of iterations for coverage maximization
 
 # Drone Parameters
@@ -66,7 +66,7 @@ cons_ext = [cons1, cons2, cons3]
 cons_prog = []
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-global STATIC_input_MADS = TDM_Functions.allocate_even_circles(5.0, N, 20 * tan(FOV/2)) #returns vector of [x;y;R] values.
+global STATIC_input_MADS = TDM_Functions.allocate_even_circles(5.0, N, 5 * tan(FOV/2)) #returns vector of [x;y;R] values.
 ini_circles = Base_Functions.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 #TDM_Functions.show_epoch(ini_circles, cir_domain.Domain_History[1]) 
 
@@ -111,7 +111,6 @@ for t in 1:Nt_sim
     for i in 1:N
         push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i]))
     end
-
 
     #Collision Avoidance Placeholders.
     global collision = Vector{Any}(undef,N) # Vector describing collision constraints
