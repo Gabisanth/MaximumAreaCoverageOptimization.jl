@@ -178,7 +178,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     R = Diagonal(@SVector fill(weigth_R, num_controls))
     Qf = Diagonal(@SVector fill(weigth_Qf, num_states)) #xf: 0,0,0, Qf 1,1,1
     # Qf = Diagonal(SA[weigth_Qf, weigth_Qf, weigth_Qf, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) #xf: 0,0,0, Qf 1,1,1
-    objective = LQRObjective(Q, R, Qf, xf, Nt)  
+    objective = LQRObjective(Q, R, Qf, xf, Nt)
 
 
     # Constraints
