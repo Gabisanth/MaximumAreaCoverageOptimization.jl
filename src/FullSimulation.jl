@@ -30,7 +30,7 @@ h_min = 1            # (user-defined) Flying altitude lower bound (exclude initi
 h_max = 20.0           # (user-defined) Flying altitude upper bound
 r_min = h_min * tan(FOV/2) # (user-defined, replaced later)
 r_max = h_max * tan(FOV/2) 
-d_lim = 9.2           # (user-defined) limitations on displacement of group UAV induced from optimization. 
+d_lim = 20           # (user-defined) limitations on displacement of group UAV induced from optimization. 
 N_iter = 100         # (use-defined) set the limit of iterations for coverage maximization
 
 # Drone Parameters
@@ -249,6 +249,7 @@ plot!(p1,
     ylabel="y [m]", yguidefontsize=15, ytickfontsize= 10, 
     xlims = (-50, 50),
     ylims = (-50, 50),
+    title = "Coverage Area Plot of UAVs"
 )
 
 
@@ -299,7 +300,7 @@ plot!(p4, timesteps, distance[1,:], label = "UAV 1", color = "blue")
 
 plot!(p5, timesteps, distance[2,:], label = "UAV 2", color = "orange")
 
-plot(p4,p5, layout=(2, 1))
+plot(p4,p5, layout=(2, 1), title = "Overall difference between target position and actual position.")
 savefig("output4.png") 
 
 
@@ -332,13 +333,13 @@ for i in 1:N
     end
 
     plot!(p4, timesteps, xvalues,  color = "black")
-    plot!(p4, timesteps, droneX,  color = this_color)
+    plot!(p4, timesteps, droneX,  color = this_color, title = "X")
 
     plot!(p5, timesteps, yvalues,  color = "black")
-    plot!(p5, timesteps, droneY,  color = this_color)
+    plot!(p5, timesteps, droneY,  color = this_color, title = "Y")
 
     plot!(p6, timesteps, zvalues,  color = "black")
-    plot!(p6, timesteps, droneZ,  color = this_color)
+    plot!(p6, timesteps, droneZ,  color = this_color, title = "Z")
 
     plot(p4,p5,p6, layout=(3, 1))
 
@@ -354,10 +355,16 @@ end
 p2 = plot()
 global palettes = ["blue", "orange", "green", "purple", "cyan", "pink", "gray", "olive"]
 
+X_data = []
+Y_data = []
+Z_data = []
+a_data = []
+b_data = []
+c_data = []
+d_data = []
 
 ## Plot 1(a): cylinder 
 #using Plots
-
 r = 150 + Nt_sim*5
 h = h_max
 m, n =200, 200
@@ -386,7 +393,23 @@ plot(p2, Plots.surface(X, Y, Z, size=(600,600),
 ## Plot 1(b): 3D trajectories for the all the UAVs
 for j in eachindex(Xs)                         # for each timestep
     local this_X = Xs[j]
-    for i in 1:N             
+    for i in 1:N             # for each UAV.
+
+        #Record all position and attitude states for UAV plotting.
+        if i==1 #choose which UAV to record all states for.
+            push!(X_data, this_X[i][end,1])
+            push!(Y_data, this_X[i][end,2])
+            push!(Z_data, this_X[i][end,3])
+
+            push!(a_data, this_X[i][end,4])
+            push!(b_data, this_X[i][end,5])
+            push!(c_data, this_X[i][end,6])
+            push!(d_data, this_X[i][end,7])
+        end
+
+
+
+        #Plot only the position.
         local this_color = palettes[mod1(i,length(palettes))]
         if j!= Nt_sim
             plot!(p2, this_X[i][:,1],this_X[i][:,2],this_X[i][:,3],
@@ -479,10 +502,35 @@ for i in 1:N
         markersize =:2,
         markerstrokestyle = :solid,
         label =:none, 
-        legend =:none)
+        legend =:none, title = "Trajectory and Targets")
 
 
 end
+
+
+
+
+#6. Write data to Excel sheet for attitude and position plotting.
+using XLSX
+data = [
+    X_data,
+    Y_data,
+    Z_data,
+    a_data,
+    b_data,
+    c_data,
+    d_data
+]
+
+# Specify the file path
+filename = "Quadrotor_States.xlsx"
+labels = ["x", "y", "z", "a", "b", "c", "d"] #positions and attitudes(in quartenion representation)
+
+XLSX.openxlsx(filename, mode="w") do xf
+    sheet = xf[1]
+    XLSX.writetable!(sheet, data, labels, anchor_cell=XLSX.CellRef("A1"))
+end
+
 
 
 

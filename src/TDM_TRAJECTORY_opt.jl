@@ -17,6 +17,7 @@ using RobotZoo: Quadrotor
 using StaticArrays, Rotations, LinearAlgebra
 using Altro
 include("TDM_Functions.jl")
+#include("DroneModelCreation.jl")
 
 
 """
@@ -114,8 +115,8 @@ function find_d_max(MAV, tf::Float64, Nf::Int64, d::Float64, sin_phi, cos_phi, s
     cons = ConstraintList(num_states, m, Nf)
 
 
-    x_min = [-100.0,-100.0,9.0,  -1.0,-1.0,-1.0,-1.0,  -2.0,-2.0,-2.0,  -1.5,-1.5,-1.5]
-    x_max = [100.0,100.0,11.0,  1.0,1.0,1.0,1.0,  2.0,2.0,2.0,  1.5,1.5,1.5]
+    x_min = [-100.0,-100.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -2.0,-2.0,-2.0,  -1.5,-1.5,-1.5]
+    x_max = [100.0,100.0,20.0,  1.0,1.0,1.0,1.0,  2.0,2.0,2.0,  1.5,1.5,1.5]
     add_constraint!(cons, BoundConstraint(n, m, x_min=x_min, x_max=x_max), 1:Nf-1)
 
 
@@ -187,7 +188,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     x_max = [200.0,200.0, 20.0,  1.0,1.0,1.0,1.0,  2.0,2.0,2.0,  1.5,1.5,1.5]
 
     u_min = [0.0, 0.0, 0.0, 0.0]
-    u_max = [2.0,2.0,2.0,2.0]
+    u_max = [10.0,10.0,10.0,10.0]
 
     add_constraint!(cons, BoundConstraint(num_states,num_controls, x_min=x_min, x_max=x_max, u_min = u_min, u_max=u_max), 1:Nt)
 

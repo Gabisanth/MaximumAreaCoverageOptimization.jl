@@ -22,10 +22,9 @@ import RobotDynamics: state_dim, control_dim
     bodyframe::Bool  # velocity in body frame?
     ned::Bool
 end
-#control_dim(::Quadrotor) = 4
 
 state_dim(::Quadrotor) = 13
-control_dim(::Quadrotor) = 5
+control_dim(::Quadrotor) = 5 #Augmented control input, with additional slack variable for soft constraint on Z.
 
 function Quadrotor{R}(;
         mass=0.5,
