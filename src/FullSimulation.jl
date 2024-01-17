@@ -18,7 +18,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 30.0            #How many seconds to run for.
+tf = 50.0            #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N=2                 #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -30,7 +30,7 @@ h_min = 1            # (user-defined) Flying altitude lower bound (exclude initi
 h_max = 20.0           # (user-defined) Flying altitude upper bound
 r_min = h_min * tan(FOV/2) # (user-defined, replaced later)
 r_max = h_max * tan(FOV/2) 
-d_lim = 20           # (user-defined) limitations on displacement of group UAV induced from optimization. 
+d_lim = 9.2           # (user-defined) limitations on displacement of group UAV induced from optimization. 
 N_iter = 100         # (use-defined) set the limit of iterations for coverage maximization
 
 # Drone Parameters

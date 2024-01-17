@@ -13,11 +13,11 @@ export find_d_max
 
 using TrajectoryOptimization
 using RobotDynamics
-using RobotZoo: Quadrotor
+#using RobotZoo: Quadrotor
 using StaticArrays, Rotations, LinearAlgebra
 using Altro
 include("TDM_Functions.jl")
-#include("DroneModelCreation.jl")
+include("DroneModelCreation.jl")
 
 
 """
@@ -151,6 +151,35 @@ end
 
 
 
+
+#Building my own Soft Constraint.
+struct SoftCon <: TrajectoryOptimization.StageConstraint
+    n::Int
+    m::Int
+    max_height::Float64
+    function SoftCon(n::Int, m::Int, max_height::Float64)
+        @assert max_height ≥ 0 "Value must be greater than or equal to zero"
+        new(n, m, max_height)
+    end
+end
+
+RobotDynamics.control_dim(con::SoftCon) = con.m
+RobotDynamics.state_dim(con::SoftCon) = con.n
+RobotDynamics.output_dim(::SoftCon) = 1
+TrajectoryOptimization.sense(::SoftCon) = Inequality()
+
+RobotDynamics.evaluate(con::SoftCon, x, u) = SA[x[3] - u[5] - con.max_height] 
+RobotDynamics.evaluate!(con::SoftCon, c, u) = SA[x[3] - u[5] - con.max_height] 
+
+
+function RobotDynamics.jacobian!(con::SoftCon, J, c, x, u)  
+    J[1,:] .= 0.0
+    J[1,3] = 1.0
+    J[1,18] = -1.0
+end
+
+
+
 """
     optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, collision::Vector{Any})
 
@@ -171,24 +200,50 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     num_states = n
     num_controls = m#Add slack control variable for max_height soft constraint.
     # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
-    weight_Q = 1 #1e-10 #Penalise the sum of state errors in the states.
-    weigth_R = 1.0 #1e-10 #Penalise controller effort.
-    weigth_Qf = 1.0 #Penalise current state error.
-    Q = Diagonal(@SVector fill(weight_Q, num_states))
+    weight_Q = 1.0 #1e-10 #Penalise the sum of state errors in the states.
+    weight_R = 1.0 #1e-10 #Penalise controller effort.
+    MU = 10000.0 #penalty factor for the soft constraint.
+    
+    weight_Qf = 1.0 #Penalise current state error.
+    Q = Diagonal(@SVector fill(weight_Q, num_states)) #for stage cost.
     # Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    R = Diagonal(@SVector fill(weigth_R, num_controls))
-    Qf = Diagonal(@SVector fill(weigth_Qf, num_states)) #xf: 0,0,0, Qf 1,1,1
+    #R = Diagonal(@SVector fill(weigth_R, num_controls)) #for stage cost.
+    R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU])
+    Qf = Diagonal(@SVector fill(weight_Qf, num_states)) #for terminal cost.  #xf: 0,0,0, Qf 1,1,1
     # Qf = Diagonal(SA[weigth_Qf, weigth_Qf, weigth_Qf, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) #xf: 0,0,0, Qf 1,1,1
-    objective = LQRObjective(Q, R, Qf, xf, Nt)
+    #objective = LQRObjective(Q, R, Qf, xf, Nt)
+
+
+    ##Create own objective function. To include slack variable for soft constraint.
+    #LQRObjective function in this case.
+    uf=@SVector zeros(size(R,1))
+
+    @assert size(Q,1) == length(xf)
+    @assert size(Qf,1) == length(xf)
+    @assert size(R,1) == length(uf)
+    n = size(Q,1) #number of states.
+    m = size(R,1) #number of controls.
+    H = SizedMatrix{m,n}(zeros(m,n))
+    q = -Q*xf
+    r = -R*uf
+    c_ = 0.5*xf'*Q*xf + 0.5*uf'R*uf
+    qf = -Qf*xf
+    cf = 0.5*xf'*Qf*xf
+
+    ℓ = QuadraticCost(Q, R, H, q, r, c_, checks=true)
+    ℓN = QuadraticCost(Qf, R, H, qf, r, cf, checks=false, terminal=true)
+
+    objective = Objective(ℓ, ℓN, Nt)
+    
 
 
     # Constraints
     cons = ConstraintList(num_states, num_controls, Nt)
     x_min = [-200.0,-200.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -2.0,-2.0,-2.0,  -1.5,-1.5,-1.5]
-    x_max = [200.0,200.0, 20.0,  1.0,1.0,1.0,1.0,  2.0,2.0,2.0,  1.5,1.5,1.5]
+    x_max = [200.0,200.0, Inf,  1.0,1.0,1.0,1.0,  2.0,2.0,2.0,  1.5,1.5,1.5] #No upper bound constraint for 'z'. Will use soft constraint for this.
 
-    u_min = [0.0, 0.0, 0.0, 0.0]
-    u_max = [10.0,10.0,10.0,10.0]
+    u_min = [0.0, 0.0, 0.0, 0.0,0.0]
+    u_max = [10.0,10.0,10.0,10.0,Inf] #Don't need upper bound constraint for slack variable.
 
     add_constraint!(cons, BoundConstraint(num_states,num_controls, x_min=x_min, x_max=x_max, u_min = u_min, u_max=u_max), 1:Nt)
 
@@ -202,9 +257,14 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # goalcon = GoalConstraint(xf, 1:3)
     # add_constraint!(cons, goalcon, Nt)  # add to the last time step
 
+    #Add soft constraint.
+    add_constraint!(cons, SoftCon(num_states, num_controls, 20.0), 1:Nt)
+
+    
+
+
     # With random initial positions (with x0=x0)
     prob = Problem(MAV.Model, objective, x0, tf, xf = xf, constraints=cons)
-
 
     # State initialization: linear trajectory from start to end
     state_guess = zeros(Float64, (num_states,Nt))
@@ -224,7 +284,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     
     altro = ALTROSolver(prob)
 
-    altro = ALTROSolver(prob,show_summary=false);
+    altro = ALTROSolver(prob,show_summary=false, verbose = 2);
 
     solve!(altro);
 
