@@ -202,7 +202,8 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
     weight_Q = 1.0 #1e-10 #Penalise the sum of state errors in the states.
     weight_R = 1.0 #1e-10 #Penalise controller effort.
-    MU = 10000.0 #penalty factor for the soft constraint.
+    MU = 1000.0 #penalty factor for the soft constraint.
+    R_penalty = [0.0, 0.0, 0.0, 0.0, MU]
     
     weight_Qf = 1.0 #Penalise current state error.
     Q = Diagonal(@SVector fill(weight_Q, num_states)) #for stage cost.
@@ -216,8 +217,8 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
 
     ##Create own objective function. To include slack variable for soft constraint.
     #LQRObjective function in this case.
-    uf=@SVector zeros(size(R,1))
 
+    uf=@SVector zeros(size(R,1))
     @assert size(Q,1) == length(xf)
     @assert size(Qf,1) == length(xf)
     @assert size(R,1) == length(uf)
@@ -230,11 +231,18 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     qf = -Qf*xf
     cf = 0.5*xf'*Qf*xf
 
-    ℓ = QuadraticCost(Q, R, H, q, r, c_, checks=true)
+    ℓ = QuadraticCost(Q, R, H, q, r, c_, checks=true) 
     ℓN = QuadraticCost(Qf, R, H, qf, r, cf, checks=false, terminal=true)
-
-    objective = Objective(ℓ, ℓN, Nt)
     
+    Q = Diagonal(@SVector fill(0.0, num_states))
+    R = Diagonal(@SVector fill(0.01, num_controls))
+    H = SizedMatrix{m,n}(zeros(m,n))
+    q = zeros(SVector{13})
+    r = SVector(0.0, 0.0, 0.0, 0.0, MU)
+    c = 0.0
+    objective_stage = QuadraticCost(Q,R,H,q,r,c, checks = true) + ℓ
+
+    objective = Objective(objective_stage, ℓN, Nt)
 
 
     # Constraints

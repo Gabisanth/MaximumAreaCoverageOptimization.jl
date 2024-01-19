@@ -18,13 +18,13 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 50.0            #How many seconds to run for.
+tf = 100.0            #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N=2                 #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
 Nt_sim = convert(Int64, tf/dt_sim)  #Number of timesteps in simulation.
 R1 = 150.0           # (user-defined) Initial radius 
-ΔR = 5.0             # Expanding rate: 5m/update
+ΔR = 0.0             # Expanding rate: 5m/update
 FOV = 80/180*π       # FOV in radians
 h_min = 1            # (user-defined) Flying altitude lower bound (exclude initialization)
 h_max = 20.0           # (user-defined) Flying altitude upper bound
@@ -66,7 +66,7 @@ cons_ext = [cons1, cons2, cons3]
 cons_prog = []
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-global STATIC_input_MADS = TDM_Functions.allocate_even_circles(5.0, N, 20 * tan(FOV/2)) #returns vector of [x;y;R] values.
+global STATIC_input_MADS = TDM_Functions.allocate_even_circles(5.0, N, 5 * tan(FOV/2)) #returns vector of [x;y;R] values.
 ini_circles = Base_Functions.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 #TDM_Functions.show_epoch(ini_circles, cir_domain.Domain_History[1]) 
 
