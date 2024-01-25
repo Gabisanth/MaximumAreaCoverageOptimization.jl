@@ -5,6 +5,8 @@ import time
 from Quadrotor import Quadrotor
 import pandas as pd
 import math
+import matplotlib.pyplot as plt
+import numpy as np
 
 def quaternion_to_euler(quaternion):
     # Extract components
@@ -43,6 +45,8 @@ file_path = 'src/Quadrotor_States.xlsx'
 # Read the Excel file into a DataFrame
 df = pd.read_excel(file_path)
 
+pitch_array = []
+
 for row in range(0,df.shape[0]):
     x_pos = df.iat[row,0]
     y_pos = df.iat[row,1]
@@ -56,6 +60,7 @@ for row in range(0,df.shape[0]):
 
     roll, pitch, yaw = quaternion_to_euler(quaternion)
     print(pitch*180/3.14)
+    pitch_array = np.append(pitch_array, pitch*180/3.14)
 
     if row == 0:
         q = Quadrotor(x=x_pos, y=y_pos, z=z_pos, roll=roll,
@@ -64,3 +69,17 @@ for row in range(0,df.shape[0]):
         q.update_pose(x_pos, y_pos, z_pos, roll, pitch, yaw)
     
     time.sleep(0.05)
+
+
+x_travelled = -df.iat[0,0] + df.iat[-1,0]
+avg_speed = x_travelled / 20
+
+print("Avg Speed: ")
+print(avg_speed)
+
+t = np.arange(df.shape[0])
+
+plt.plot(t, pitch_array)
+plt.show()
+
+

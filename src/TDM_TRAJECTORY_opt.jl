@@ -203,7 +203,6 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     weight_Q = 1.0 #1e-10 #Penalise the sum of state errors in the states.
     weight_R = 1.0 #1e-10 #Penalise controller effort.
     MU = 1000.0 #penalty factor for the soft constraint.
-    R_penalty = [0.0, 0.0, 0.0, 0.0, MU]
     
     weight_Qf = 1.0 #Penalise current state error.
     Q = Diagonal(@SVector fill(weight_Q, num_states)) #for stage cost.
@@ -292,7 +291,11 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     
     altro = ALTROSolver(prob)
 
-    altro = ALTROSolver(prob,show_summary=false, verbose = 2);
+    altro = ALTROSolver(prob,show_summary=false, verbose = 0);
+
+    #output_log = altro.stats
+
+
 
     solve!(altro);
 
@@ -306,7 +309,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # end
 
     push!(MAV.StateHistory, X[2]) # We apply the next suggested control input, so we want the next state after this control input has been applied.
-    return X #altro.stats.tsolve # Returns the total save time in milliseconds.
+    return X[2] #altro.stats.tsolve # Returns the total save time in milliseconds.
 end
 
 

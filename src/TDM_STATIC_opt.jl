@@ -141,61 +141,73 @@ function check(input, output, r_min, r_max, d_lim, circles_pool)
         end
     end
 
+    # for i in 1:N
+    #     output[i] = input_circles[i].x + 30                           # x
+    #     output[N + i] = input_circles[i].y                   # y
+    #     output[2*N + i] = r_max  # R
+    # end
 
-    if any(is_contained) || any(no_movement)
-        println("is_contained: ",is_contained)
-        println("no_movement: ",no_movement)
-        global FOV = 80 /180 *pi
-        for i in 1:N
-            if is_contained[i] == true || no_movement[i] == true 
 
-                global success = true
-                for angle in 1:1:360
-                    success = true
-                    movement = 0.9*d_lim
 
-                    this_x = output[i] + movement * √2/√3 * cosd(angle)
-                    this_y = output[N + i] + movement * √2/√3 * sind(angle)
-                    this_r = output[2*N + i] + movement * 1/√3 * tan(FOV/2)
 
-                    global this_circle = Base_Functions.make_circles([this_x, this_y, this_r])
+    # if any(is_contained) || any(no_movement)
+    #     println("is_contained: ",is_contained)
+    #     println("no_movement: ",no_movement)
+    #     global FOV = 80 /180 *pi
+    #     for i in 1:N
+    #         if is_contained[i] == true || no_movement[i] == true 
+
+    #             global success = true
+    #             for angle in 1:1:360
+    #                 success = true
+    #                 movement = 0.9*d_lim
+
+    #                 this_x = output[i] + movement * √2/√3 * cosd(angle)
+    #                 this_y = output[N + i] + movement * √2/√3 * sind(angle)
+    #                 this_r = output[2*N + i] + movement * 1/√3 * tan(FOV/2)
+
+    #                 global this_circle = Base_Functions.make_circles([this_x, this_y, this_r])
     
-                    for m in eachindex(circles_pool)
-                        if Base_Functions.intersection(this_circle[1], circles_pool[m]) !== nothing ||
-                            Base_Functions.contained(this_circle[1], circles_pool[m]) !== nothing
-                            success =  false
-                            break
-                        end
-                    end
+    #                 for m in eachindex(circles_pool)
+    #                     if Base_Functions.intersection(this_circle[1], circles_pool[m]) !== nothing ||
+    #                         Base_Functions.contained(this_circle[1], circles_pool[m]) !== nothing
+    #                         success =  false
+    #                         break
+    #                     end
+    #                 end
 
-                    if success == true
-                        output[i] = this_x
-                        output[N + i] = this_y
-                        output[2*N + i] = this_r
-                        println("Reallocate successful!")
-                        break
-                    end
-                end
+    #                 if success == true
+    #                     output[i] = this_x
+    #                     output[N + i] = this_y
+    #                     output[2*N + i] = this_r
+    #                     println("Reallocate successful!")
+    #                     break
+    #                 end
+    #             end
 
 
-                if success == false
-                    println("Reallocate fail! Interpolate outwards!")
-                    direction = [output[i], output[N+i], output[2*N+i]/tan(FOV/2)]/sqrt((output[i])^2 + (output[N+i])^2+ (output[2*N+i]/tan(FOV/2))^2)
-                    increment = d_lim *direction
+    #             # if success == false
+    #             #     println("Reallocate fail! Interpolate outwards!")
+    #             #     direction = [output[i], output[N+i], output[2*N+i]/tan(FOV/2)]/sqrt((output[i])^2 + (output[N+i])^2+ (output[2*N+i]/tan(FOV/2))^2)
+    #             #     increment = d_lim *direction
 
-                    output[i] = output[i] + increment[1]                             # x
-                    output[N + i] = output[N + i] + increment[2]                    # y
-                    output[2*N + i] = min(output[2*N + i] + increment[3] *tan(FOV/2) *0.9 ,  r_max)   # R
-                end
-            end
-        end
+    #             #     output[i] = output[i] + increment[1]                             # x
+    #             #     output[N + i] = output[N + i] + increment[2]                    # y
+    #             #     output[2*N + i] = min(output[2*N + i] + increment[3] *tan(FOV/2) *0.9 ,  r_max)   # R
+    #             # end
+    #         end
+    #     end
 
-        return true, output                          
-        # true: has contained circles; output the current circles group in MADS format 
-    else
-        return false, []
-        # true: has no contained circle; output blank array
-    end
+    #     return true, output                          
+    #     # true: has contained circles; output the current circles group in MADS format 
+    # else
+    #     return false, output #[]
+    #     # true: has no contained circle; output blank array
+    # end
+
+
+    
+    return true, output
 end
 
 end # module end

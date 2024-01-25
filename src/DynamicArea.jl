@@ -1,12 +1,11 @@
 using Random
 using Plots
 
-include("Base_Functions.jl")
 
 # Constants
 EMPTY,TREE, FIRE = 0,1,2
 num_iterations = 100
-grid_size = [200,200]
+grid_size = [50,50]
 forest_density = 0.7
 
 # Initialize the grid
@@ -19,11 +18,11 @@ for i in 1:grid_size[1], j in 1:grid_size[2]
     end
 end
 
-grid[45:55,45:55] .= FIRE  # Spawn fire in a location on the grid.
+grid[20:25,30:35] .= FIRE  # Spawn fire in a location on the grid.
 
 # Wind parameters
 wind_speed = 1  # Random wind speed from 0 to 5
-wind_direction =  pi/4# Random wind direction in radians
+wind_direction =  3*pi/2# Random wind direction in radians
 
 
 # Function to update the grid using cellular automata rules
@@ -37,7 +36,7 @@ function update_grid(grid)
                 #Find which neighbours are on fire.
                 indexArray = findall(x -> x == FIRE, grid[i-1:i+1, j-1:j+1])
                 for index in indexArray
-                    if wind_speed * cos(wind_direction - atan((2-index[1]),(2-index[2]))) > rand()
+                    if wind_speed * cos(wind_direction - atan((2-index[2]),(2-index[1]))) > rand() #indices changed to transform the coordinate system.
                         new_grid[i, j] = FIRE
                     end
                 end
@@ -48,10 +47,11 @@ function update_grid(grid)
 end
 
 # Simulate fire propagation
-heatmap(1:grid_size[2], 1:grid_size[1], grid, c=:viridis, clim=(0, 2), color=:grays)
+heatmap(1:grid_size[2], 1:grid_size[1], grid', c=:viridis, clim=(0, 2), color=:grays)
 for t in 1:num_iterations
     global grid = update_grid(grid)
-    heatmap(1:grid_size[2], 1:grid_size[1], grid, c=:viridis, clim=(0, 2), color=:grays)
+    heatmap(1:grid_size[2], 1:grid_size[1], grid', c=:viridis, clim=(0, 2), color=:grays) #The transpose is done on grid, in order to change the coordinates system with x on x axis and y on y axis.
+    sleep(0.5)
 end
 current()
 
