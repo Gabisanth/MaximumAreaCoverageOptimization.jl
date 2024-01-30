@@ -309,7 +309,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # end
 
     push!(MAV.StateHistory, X[2]) # We apply the next suggested control input, so we want the next state after this control input has been applied.
-    return X[2] #altro.stats.tsolve # Returns the total save time in milliseconds.
+    return X[2] #returns all states at next timestep.
 end
 
 

@@ -1,9 +1,11 @@
 module Base_Functions
 
 export Circle
-export Point
+export allocate_even_circles
+export plot_circle
 
-export make_circles
+
+
 export draw
 export distance
 export coincident
@@ -15,8 +17,10 @@ export point_on_circle
 export shoelace
 export associate
 
-using LinearAlgebra
+using LinearAlgebra, Rotations
 using Random
+using RobotDynamics
+using Plots
 
 """
     struct Circle
@@ -28,16 +32,115 @@ A circle object
     - 'x::Float64':             x-position of the circle centre on a 2D Cartesian grid
     - 'y::Float64':             y-position of the circle centre on a 2D Cartesian grid
     - 'R::Float64':             Radius
-    - 'Points::Vector{Int}':    Vector of intersection point indices
-    - 'Circles::Vector{Int}':   Vector of intersection circles indices
 """
 mutable struct Circle
     x::Float64
     y::Float64
     R::Float64
-    Points::Vector{Int}
-    Circles::Vector{Int}
 end
+
+
+function allocate_even_circles(r_centering_cir::Float64, N, r_uav::Float64, center_x, center_y)
+    # Generate circles
+    x_arr = Vector{Float64}(undef,0)
+    y_arr = Vector{Float64}(undef,0)
+    r_arr = Vector{Float64}(undef,0)
+
+    for i in 1:N
+
+        ref_angle = 2*π/N * (i-1)
+        
+        x = r_centering_cir * cos(ref_angle) + center_x
+        y = r_centering_cir * sin(ref_angle) + center_y
+        r = r_uav
+
+        push!(x_arr,x)
+        push!(y_arr,y)
+        push!(r_arr,r)
+    end
+
+    return [x_arr;y_arr;r_arr]
+
+end
+
+function MADS_to_ALTRO(z::Vector{Float64})
+
+    N = Int(length(z)/3)
+    FOV = 80/180*pi
+
+    x = Vector{RBState}()
+    for i in range(1,stop=N)
+        x_val = z[i]
+        y_val = z[N + i]
+        R_val = z[N*2 + i]
+
+        z_val = R_val/tan(FOV/2)
+
+        push!(x, RBState([x_val, y_val, z_val], UnitQuaternion(I), zeros(3), zeros(3))); 
+        # positions(3), orientation(4), velocity(3), angular velocity(3)
+
+        # push!(x, RBState([x_val, y_val, z_val], zeros(3), zeros(3), zeros(3))); 
+        # positions(3), 
+        # Euler angles(3: phi (roll)|theta (pitch)|psi (yaw)), 
+        # Linear velocity(3), 
+        # Angular velocity(3) 
+    end
+
+    return x
+end
+
+
+
+function plot_circle(center_x, center_y, radius, plot_object)
+    θ = LinRange(0, 2π, 100)
+    x = center_x .+ radius * cos.(θ)
+    y = center_y .+ radius * sin.(θ)
+
+    plot!(plot_object, x, y, legend = false)
+    scatter!(plot_object, [center_x], [center_y], color="red", marker=:dot, legend = false)
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 """
     struct Point
@@ -48,36 +151,18 @@ A point object
 
     - 'x::Float64':             x-position of the point on a 2D Cartesian grid
     - 'y::Float64':             y-position of the point on a 2D Cartesian grid
-    - 'Circles::Vector{Int}':   Vector of circle indices that form point
+    - 'AreaRep::Float64':       Amount of area represented by this point
+    - 'Importance::Int8':      Scale to show how important this area is to capture
+    - 'Captured::Bool           Boolean to state whether this point has been captured or not.
 """
 mutable struct Point
     x::Float64
     y::Float64
-    Circles::Vector{Int}
+    AreaRep::Float64
+    Importance::Int8
+    Captured::Bool
 end
 
-"""
-    make_circles(arr::Vector{Float64})
-
-Returns a Vector of Circle objects
-
-# Arguments:
-
-    - 'arr::{Vector{Float64}}': Vector of x,y coordinates with radii values, in the order [x;y;R]
-"""
-function make_circles(arr::Vector{Float64})
-    N = Int(length(arr)/3)
-
-    circles = Vector{Circle}()
-    for i in 1:N
-        x = arr[i]
-        y = arr[N + i]
-        R = arr[2*N + i]
-        push!(circles, Circle(x,y,R,[],[]))
-    end
-    
-    return circles
-end
 
 """
     draw(A::Circle, theta1::Float64, theta2::Float64)
