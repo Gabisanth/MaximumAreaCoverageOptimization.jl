@@ -9,7 +9,7 @@ include("AreaCoverageCalculation.jl")
 function cons1(x)
     for i in range(1,stop=Int(length(x)/3))
         R_val = x[N*2 + i]
-        val = (R_val > r_min && R_val <= r_max+5)
+        val = (R_val > r_min && R_val <= r_max)
         if !val
             return false
         end
@@ -20,13 +20,13 @@ end
 
 # Extreme Constraint 2: Could not be contained by or contain the same UAV
 function cons2(x)
-    this_group = AreaCoverageCalculation.make_circles(x)
+    # this_group = AreaCoverageCalculation.make_circles(x)
     
-    for i in eachindex(this_group)
-        if Base_Functions.pure_contained(this_group[i], pre_optimized_circles_MADS[i]) !== nothing
-            return false
-        end
-    end
+    # for i in eachindex(this_group)
+    #     if Base_Functions.pure_contained(this_group[i], pre_optimized_circles_MADS[i]) !== nothing
+    #         return false
+    #     end
+    # end
     return true
 end
 
@@ -35,9 +35,9 @@ end
 function cons3(x)
     this_group = AreaCoverageCalculation.make_circles(x)
     for i in eachindex(this_group)
-        x1 = pre_optimized_circles[i].x
-        y1 = pre_optimized_circles[i].y
-        z1 = pre_optimized_circles[i].R / tan(FOV/2)
+        x1 = pre_optimized_circles_MADS[i].x
+        y1 = pre_optimized_circles_MADS[i].y
+        z1 = pre_optimized_circles_MADS[i].R / tan(FOV/2)
         # z1 = pre.R / tan(FOV/2)
         
         x2 = this_group[i].x

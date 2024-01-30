@@ -79,7 +79,7 @@ ini_circles = AreaCoverageCalculation.make_circles(STATIC_input_MADS) #returns v
 
 #Initialise area maximisation placeholders.
 global circles_pool = ini_circles          # Initialize circle pool
-global pre_optimized_circles = ini_circles # Initialize pre-optimized circles
+#global pre_optimized_circles = ini_circles # Initialize pre-optimized circles
 global pre_optimized_circles_MADS = ini_circles # Initialize pre-optimized circles
 single_input_pb = []                        # document the circles at each epoch
 single_output_pb = []
@@ -90,18 +90,22 @@ for t in 1:Nt_sim
     println("Starting iteration $t")
 
     ##Perform Area Maximization Optimization.
-    # 1. Set up the input at each timestep.
+    # 0. Remove covered area.
     global STATIC_input_MADS = AreaCoverageCalculation.make_MADS(pre_optimized_circles_MADS) #output is of the form: [x;y;R]. Holds previous timestep location of drones for MADS.
-    single_input = STATIC_input_MADS #[x;y;R] location of UAVs from previous timestep. (i.e. beginning location for this iteration.)
+    drone_locs = STATIC_input_MADS #[x;y;R] location of UAVs from previous timestep. (i.e. beginning location for this iteration.)
 
     #Remove the covered area from the list of points to explore.
-    global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(single_input, points_of_interest)
- 
+    global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(drone_locs, points_of_interest)
+
+
+    # 1. Set up the input at each timestep. (using previous MADS output to warm-start)
     # 2. Main area coverage optimization function.
     if t == 1
-        global STATIC_output = TDM_STATIC_opt.optimize(STATIC_input_MADS, AreaMaxObjective, cons_ext, cons_prog, N_iter) #output is of the form: [x;y;R].
+        single_input = drone_locs
+        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, cons_ext, cons_prog, N_iter) #output is of the form: [x;y;R].
     else
-        global STATIC_output = TDM_STATIC_opt.optimize(STATIC_input_MADS, AreaMaxObjective, cons_ext, cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
+        single_input = single_output
+        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons4], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
     end
     
     if STATIC_output == false
