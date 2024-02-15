@@ -202,7 +202,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
     weight_Q = 1.0 #1e-10 #Penalise the sum of state errors in the states.
     weight_R = 1.0 #1e-10 #Penalise controller effort.
-    MU = 1000.0 #penalty factor for the soft constraint.
+    MU = 1.0 #penalty factor for the soft constraint.
     
     weight_Qf = 1.0 #Penalise current state error.
     Q = Diagonal(@SVector fill(weight_Q, num_states)) #for stage cost.

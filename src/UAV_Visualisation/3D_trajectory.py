@@ -7,6 +7,7 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+from Target import Target
 
 def quaternion_to_euler(quaternion):
     # Extract components
@@ -30,20 +31,20 @@ def quaternion_to_euler(quaternion):
 
     return roll_x, pitch_y, yaw_z
 
+
+
 show_animation = True
 
-x_pos = -5
-y_pos = -5
-z_pos = 5
-roll = 0
-pitch = 0
-yaw = 0
 
 # Specify the file path
 file_path = 'src/Quadrotor_States.xlsx'
 
 # Read the Excel file into a DataFrame
 df = pd.read_excel(file_path)
+
+
+file_path = 'src/Quadrotor_Targets.xlsx'
+df_targets = pd.read_excel(file_path)
 
 pitch_array = []
 
@@ -52,6 +53,10 @@ for row in range(0,df.shape[0]):
     y_pos = df.iat[row,1]
     z_pos = df.iat[row,2]
 
+    x_target = df_targets.iat[row,0]
+    y_target = df_targets.iat[row,1]
+    z_target = df_targets.iat[row,2]
+
     w = df.iat[row,3]
     x = df.iat[row,4]
     y = df.iat[row,5]
@@ -59,27 +64,32 @@ for row in range(0,df.shape[0]):
     quaternion = [w,x,y,z]
 
     roll, pitch, yaw = quaternion_to_euler(quaternion)
-    print(pitch*180/3.14)
-    pitch_array = np.append(pitch_array, pitch*180/3.14)
+    # print(pitch*180/3.14)
+    # pitch_array = np.append(pitch_array, pitch*180/3.14)
 
     if row == 0:
         q = Quadrotor(x=x_pos, y=y_pos, z=z_pos, roll=roll,
                 pitch=pitch, yaw=yaw, size=1, show_animation=show_animation)
+        t = Target(x=x_target, y=y_target, z=z_target, roll=0.0,
+                pitch=0.0, yaw=0.0, size=1, show_animation=show_animation, ax=q.ax)
     else:
         q.update_pose(x_pos, y_pos, z_pos, roll, pitch, yaw)
+        t.update_pose(x_target, y_target, z_target,0.0, 0.0, 0.0, ax=q.ax)
     
-    time.sleep(0.05)
+    time.sleep(0.1)
 
 
-x_travelled = -df.iat[0,0] + df.iat[-1,0]
-avg_speed = x_travelled / 20
 
-print("Avg Speed: ")
-print(avg_speed)
 
-t = np.arange(df.shape[0])
+# x_travelled = -df.iat[0,0] + df.iat[-1,0]
+# avg_speed = x_travelled / 20
 
-plt.plot(t, pitch_array)
-plt.show()
+# print("Avg Speed: ")
+# print(avg_speed)
+
+# t = np.arange(df.shape[0])
+
+# plt.plot(t, pitch_array)
+# plt.show()
 
 

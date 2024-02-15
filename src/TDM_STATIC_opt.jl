@@ -35,6 +35,8 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter)
     SetInitialPoint(p, input)
     SetObjective(p, obj)
     SetIterationLimit(p, N_iter)
+    
+    DirectSearch.SetMinimumMeshSize(p, 1.0)
 
     # Add constraints to problem
     for i in cons_ext

@@ -26,13 +26,18 @@
 
 # print(y[2:4])
 
-using LinearAlgebra
-v = [1,2,3]
-u = [3,4,5]
+# using LinearAlgebra
+# v = [1,2,3]
+# u = [3,4,5]
 
-print(dot(v,u))
-print(norm(u))
+# print(dot(v,u))
+# print(norm(u))
 
-print(rad2degrees(acos(1.2)))
+# print(rad2degrees(acos(1.2)))
+
+x = [1,2,3]
+y = [4,5,6,7]
+
+z = [x]
 
 

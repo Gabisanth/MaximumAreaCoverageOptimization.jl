@@ -18,7 +18,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 100.0            #How many seconds to run for.
+tf = 200.0            #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N=2                 #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -38,7 +38,7 @@ mass = 0.5                                       # mass of quadrotor
 J = Diagonal(@SVector[0.0023, 0.0023, 0.004])    # inertia matrix                    
 gravity = SVector(0,0,-9.81)                     # gravity vector
 motor_dist = 0.1750                              # distance between motors
-kf = 1.0                                         # motor force constant (motor force = kf*u)
+kf = 5.0                                         # motor force constant (motor force = kf*u)
 km = 0.0245                                      # motor torque constant (motor torque = km*u)
 
 #Receding Horizon control parameters.
@@ -54,19 +54,26 @@ Nm = 5              # Number of applied time-steps
 #cir_domain = TDM_Functions.Domains_Problem([], R1, ΔR)
 
 #Initialise the points of interest.
-global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,100.0,100.0) #Create initial set of points of interest.
+global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,50.0,50.0) #Create initial set of points of interest.
+
+
+# N = 1500.0
+# x = [[N/4, N/4, 3*N/4, 3*N/4];[N/4, 3*N/4, N/4, 3*N/4];[N/2, N/2, N/2, N/2]]
 
 # Define Area maximization objective function.
 function AreaMaxObjective(x) #x is the vector of UAV locations in the form [x;y;r]
+    #global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,N,N) #Create initial set of points of interest.
+
     objective_circles = AreaCoverageCalculation.make_circles(x) #output is of the form: Vector of Circle objects
     objective_circles = AreaCoverageCalculation.make_MADS(objective_circles) #output is of the form: Vector of circle coordinates and radii [x;y;r]
     area_covered = AreaCoverageCalculation.calculateArea(objective_circles,points_of_interest) #ouputs the area covered by circles.
+
+    #global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(objective_circles, points_of_interest)
     return -area_covered
 end
 
 
-# x = [[-5.0, 0.0, 5.0, 0.0];[0.0, 5.0, 0.0, 5.0];[3.0, 3.0, 3.0, 3.0]]
-# @timev AreaMaxObjective(x)
+#@timev AreaMaxObjective(x)
 
 
 # Define extreme and progressive constraints
@@ -74,7 +81,7 @@ cons_ext = [cons1, cons2, cons3]
 cons_prog = []
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-global STATIC_input_MADS = Base_Functions.allocate_even_circles(5.0, N, 10 * tan(FOV/2), 50.0, 50.0) #returns vector of [x;y;R] values.
+global STATIC_input_MADS = Base_Functions.allocate_even_circles(5.0, N, 10 * tan(FOV/2), 25.0, 25.0) #returns vector of [x;y;R] values.
 ini_circles = AreaCoverageCalculation.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 
 #Initialise area maximisation placeholders.
@@ -105,7 +112,7 @@ for t in 1:Nt_sim
         global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, cons_ext, cons_prog, N_iter) #output is of the form: [x;y;R].
     else
         single_input = single_output
-        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons4], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
+        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
     end
     
     if STATIC_output == false
@@ -211,10 +218,10 @@ end
 
 
 
-#1. Plotting the circles and positions of the drones at each timestep.
-p1 = plot()
-#history_TDM = cir_domain.Domain_History
-# store the trajectory of center
+# #1. Plotting the target circles  at each timestep.
+# p1 = plot()
+# #history_TDM = cir_domain.Domain_History
+# # store the trajectory of center
 all_center_x=[]
 all_center_y=[]
 all_center_z=[]
@@ -238,94 +245,73 @@ for j in 1:N                                    #N is the number of UAVs.
     push!(all_center_z, zs_circle)
     push!(all_center_R, Rs_circle)
 end
+global palettes = ["blue", "green", "orange", "purple", "cyan", "pink", "gray", "olive"]
 
 
 
-global palettes = ["blue", "orange", "green", "purple", "cyan", "pink", "gray", "olive"]
-for j in 1:N
-    # palette = ["blue", "orange", "green", "purple", "cyan"]
-    this_color = palettes[mod1(j,length(palettes))]
+# for j in 1:N
+#     this_color = palettes[mod1(j,length(palettes))]
 
-    for i in eachindex(single_input_pb)
-        Base_Functions.plot_circle(all_center_x[j][i], all_center_y[j][i], all_center_R[j][i], p1)
-    end
-
-
-    # plot!(p1, all_center_x[i][1:end], all_center_y[i][1:end], 
-    #     aspect_ratio=1, color = this_color,
-    #     markershape =:cross, 
-    #     markersize =:1,
-    #     markerstrokestyle = :solid,
-    #     label =:none, 
-    #     legend =:none)
-end
-
-# for rnd in eachindex(history_TDM)
-#     this_domain = history_TDM[rnd]
-#     TDM_Functions.show_coverage(circles_pool, this_domain, rnd, Nt_sim, N)
-# end
-
-plot!(p1,
-    legend=false,
-    size=(600, 650),
-    xlabel="x [m]", xguidefontsize=15, xtickfontsize= 10, 
-    ylabel="y [m]", yguidefontsize=15, ytickfontsize= 10, 
-    xlims = (0, 100),
-    ylims = (0, 100),
-    title = "Coverage Area Plot of UAVs"
-)
-
-
-savefig("output1.png") 
-
-
-
-
-#4. Plotting the difference between the target set and current position of UAV at each timestep.
-all_center_x=[]
-all_center_y=[]
-all_center_z=[]
-all_center_R=[]
-
-for j in 1:N                                    #N is the number of UAVs.
-    xs_circle = []
-    ys_circle = []
-    Rs_circle = []
-    zs_circle = []
-    for i in eachindex(single_output_pb)
-        circle_in = single_output_pb[i]
-        push!(xs_circle, circle_in[j])
-        push!(ys_circle, circle_in[j + N])
-        push!(Rs_circle, circle_in[j + 2*N])
-        z = circle_in[j + 2*N]/tan(FOV/2)
-        push!(zs_circle, z)
-    end
-    push!(all_center_x, xs_circle)
-    push!(all_center_y, ys_circle)
-    push!(all_center_z, zs_circle)
-    push!(all_center_R, Rs_circle)
-end
-
-# p4 = plot()
-# p5 = plot()
-
-# distance = zeros(N,Nt_sim)
-# for t in 1:Nt_sim
-#     local this_X = Xs[t]
-#     for i=1:N
-#         distance[i,t] = sqrt((all_center_x[i][t] - this_X[i][end,1])^2 + (all_center_y[i][t] - this_X[i][end,2])^2 + (all_center_z[i][t] - this_X[i][end,3])^2)
+#     for i in eachindex(single_input_pb)
+#         Base_Functions.plot_circle(all_center_x[j][i], all_center_y[j][i], all_center_R[j][i], p1)
 #     end
+
+
+#     # plot!(p1, all_center_x[i][1:end], all_center_y[i][1:end], 
+#     #     aspect_ratio=1, color = this_color,
+#     #     markershape =:cross, 
+#     #     markersize =:1,
+#     #     markerstrokestyle = :solid,
+#     #     label =:none, 
+#     #     legend =:none)
 # end
 
+# # for rnd in eachindex(history_TDM)
+# #     this_domain = history_TDM[rnd]
+# #     TDM_Functions.show_coverage(circles_pool, this_domain, rnd, Nt_sim, N)
+# # end
 
-# timesteps = range(1, stop=Nt_sim)
+# plot!(p1,
+#     legend=false,
+#     size=(600, 650),
+#     xlabel="x [m]", xguidefontsize=15, xtickfontsize= 10, 
+#     ylabel="y [m]", yguidefontsize=15, ytickfontsize= 10, 
+#     xlims = (0, 100),
+#     ylims = (0, 100),
+#     title = "Coverage Area Plot of UAV Targets"
+# )
 
-# plot!(p4, timesteps, distance[1,:], label = "UAV 1", color = "blue")
 
-# plot!(p5, timesteps, distance[2,:], label = "UAV 2", color = "orange")
+# savefig("output1.png") 
 
-# plot(p4,p5, layout=(2, 1), title = "Overall difference between target position and actual position.")
-# savefig("output4.png") 
+
+
+
+# #4. Plotting the difference between the target set and current position of UAV at each timestep.
+# all_center_x=[]
+# all_center_y=[]
+# all_center_z=[]
+# all_center_R=[]
+
+# for j in 1:N                                    #N is the number of UAVs.
+#     xs_circle = []
+#     ys_circle = []
+#     Rs_circle = []
+#     zs_circle = []
+#     for i in eachindex(single_output_pb)
+#         circle_in = single_output_pb[i]
+#         push!(xs_circle, circle_in[j])
+#         push!(ys_circle, circle_in[j + N])
+#         push!(Rs_circle, circle_in[j + 2*N])
+#         z = circle_in[j + 2*N]/tan(FOV/2)
+#         push!(zs_circle, z)
+#     end
+#     push!(all_center_x, xs_circle)
+#     push!(all_center_y, ys_circle)
+#     push!(all_center_z, zs_circle)
+#     push!(all_center_R, Rs_circle)
+# end
+
 
 
 
@@ -336,11 +322,15 @@ end
 
 
 #5. Plotting the targets at each timestep but separately for x,y,z positions.
+global x_target = []
+global y_target = []
+global z_target = []
+
 timesteps = range(1, stop=Nt_sim)
 for i in 1:N
-    local p4 = plot() #x values.
-    local p5 = plot() #y values.
-    local p6 = plot() #z values.
+    local p4 = plot(label=false) #x values.
+    local p5 = plot(label=false) #y values.
+    local p6 = plot(label=false) #z values.
 
     this_color = palettes[mod1(i,length(palettes))]
     local xvalues = []
@@ -363,16 +353,29 @@ for i in 1:N
 
     end
 
-    plot!(p4, timesteps, xvalues,  color = "black")
-    plot!(p4, timesteps, droneX,  color = this_color, title = "X")
+    if i == 1
+        global x_target = xvalues
+        global y_target = yvalues
+        global z_target = zvalues
+    end
 
-    plot!(p5, timesteps, yvalues,  color = "black")
-    plot!(p5, timesteps, droneY,  color = this_color, title = "Y")
+    plot!(p4, timesteps, xvalues,  color = "red", label=false)
+    plot!(p4, timesteps, droneX,  color = this_color, ylabel="X (m)")
 
-    plot!(p6, timesteps, zvalues,  color = "black")
-    plot!(p6, timesteps, droneZ,  color = this_color, title = "Z")
+    plot!(p5, timesteps, yvalues,  color = "red", label=false)
+    plot!(p5, timesteps, droneY,  color = this_color, ylabel="Y (m)", label=false)
 
-    plot(p4,p5,p6, layout=(3, 1))
+    plot!(p6, timesteps, zvalues,  color = "red", label=false)
+    plot!(p6, timesteps, droneZ,  color = this_color, ylabel="Z (m)", xlabel="Timestep", label=false)
+
+    p = plot(p4,p5,p6, layout=(3, 1), margin=2*Plots.mm,  label=["UAV$i Targets" "UAV$i Positions" ])
+
+    #Remove duplicate legend labels.
+    for h in 3:length(p.series_list)
+        p.series_list[h][:label] = ""
+    end
+
+    plot(p, legend = :outertopright)
 
     savefig("outputs5-$i")
 
@@ -384,7 +387,6 @@ end
 #2. Plotting trajectory.
 # Plot 3D trajectories
 p2 = plot()
-global palettes = ["blue", "orange", "green", "purple", "cyan", "pink", "gray", "olive"]
 
 X_data = []
 Y_data = []
@@ -474,72 +476,72 @@ plot!(p2, grid = true, gridwidth = 3,
 
 
 
-# #3. Plotting the target positions for the drones at each timestep.
+# # #3. Plotting the target positions for the drones at each timestep.
 
-# #p3 = plot()
-# # history_TDM = cir_domain.Domain_History
-# # # store the trajectory of center
-# # all_center_x=[]
-# # all_center_y=[]
-# # all_center_z=[]
-# # for j in 1:N   
-# #     xs_circle = []
-# #     ys_circle = []
-# #     zs_circle = []
-# #     for i in eachindex(single_output_pb)  
-# #         circle_out = single_output_pb[i].circles[j]
-# #         push!(xs_circle, circle_out.x)
-# #         push!(ys_circle, circle_out.y)
-# #         z = circle_out.R/tan(FOV/2)
-# #         push!(zs_circle, z)
-# #     end
-# #     push!(all_center_x, xs_circle)
-# #     push!(all_center_y, ys_circle)
-# #     push!(all_center_z, zs_circle)
+# # #p3 = plot()
+# # # history_TDM = cir_domain.Domain_History
+# # # # store the trajectory of center
+# # # all_center_x=[]
+# # # all_center_y=[]
+# # # all_center_z=[]
+# # # for j in 1:N   
+# # #     xs_circle = []
+# # #     ys_circle = []
+# # #     zs_circle = []
+# # #     for i in eachindex(single_output_pb)  
+# # #         circle_out = single_output_pb[i].circles[j]
+# # #         push!(xs_circle, circle_out.x)
+# # #         push!(ys_circle, circle_out.y)
+# # #         z = circle_out.R/tan(FOV/2)
+# # #         push!(zs_circle, z)
+# # #     end
+# # #     push!(all_center_x, xs_circle)
+# # #     push!(all_center_y, ys_circle)
+# # #     push!(all_center_z, zs_circle)
 
-# #     # println("From single input history: For Drone $j")
-# #     # println(xs_circle[1])
-# #     # println(xs_circle[end])
-# #     # println(ys_circle[1])
-# #     # println(ys_circle[end])
-# #     # println(Rs_circle[1])
-# #     # println(Rs_circle[end])
-# # end
-
-
+# # #     # println("From single input history: For Drone $j")
+# # #     # println(xs_circle[1])
+# # #     # println(xs_circle[end])
+# # #     # println(ys_circle[1])
+# # #     # println(ys_circle[end])
+# # #     # println(Rs_circle[1])
+# # #     # println(Rs_circle[end])
+# # # end
 
 
-# # global palettes = ["blue", "orange", "green", "purple", "cyan", "pink", "gray", "olive"]
-# for i in 1:N
-#     # palette = ["blue", "orange", "green", "purple", "cyan"]
+
+
+# # # global palettes = ["blue", "orange", "green", "purple", "cyan", "pink", "gray", "olive"]
+# # for i in 1:N
+# #     # palette = ["blue", "orange", "green", "purple", "cyan"]
     
-#     this_color = palettes[i+2]
-#     plot!(p2, all_center_x[i][1:end], all_center_y[i][1:end], all_center_z[i][1:end], 
-#         aspect_ratio=1, color = this_color,
-#         markershape = :cross, 
-#         markersize =:1,
-#         markerstrokestyle = :solid,
-#         label =:none, 
-#         legend =:none)
+# #     this_color = palettes[i+2]
+# #     plot!(p2, all_center_x[i][1:end], all_center_y[i][1:end], all_center_z[i][1:end], 
+# #         aspect_ratio=1, color = this_color,
+# #         markershape = :cross, 
+# #         markersize =:1,
+# #         markerstrokestyle = :solid,
+# #         label =:none, 
+# #         legend =:none)
 
-#         plot!(p2, [all_center_x[i][1]], [all_center_y[i][1]], [all_center_z[i][1]], 
-#         aspect_ratio=1, color = this_color,
-#         markershape = :square, 
-#         markersize =:2,
-#         markerstrokestyle = :solid,
-#         label =:none, 
-#         legend =:none)
+# #         plot!(p2, [all_center_x[i][1]], [all_center_y[i][1]], [all_center_z[i][1]], 
+# #         aspect_ratio=1, color = this_color,
+# #         markershape = :square, 
+# #         markersize =:2,
+# #         markerstrokestyle = :solid,
+# #         label =:none, 
+# #         legend =:none)
 
-#         plot!(p2, [all_center_x[i][end]], [all_center_y[i][end]], [all_center_z[i][end]], 
-#         aspect_ratio=1, color = this_color,
-#         markershape = :circle, 
-#         markersize =:2,
-#         markerstrokestyle = :solid,
-#         label =:none, 
-#         legend =:none, title = "Trajectory and Targets")
+# #         plot!(p2, [all_center_x[i][end]], [all_center_y[i][end]], [all_center_z[i][end]], 
+# #         aspect_ratio=1, color = this_color,
+# #         markershape = :circle, 
+# #         markersize =:2,
+# #         markerstrokestyle = :solid,
+# #         label =:none, 
+# #         legend =:none, title = "Trajectory and Targets")
 
 
-# end
+# # end
 
 
 
@@ -559,6 +561,23 @@ data = [
 # Specify the file path
 filename = "Quadrotor_States.xlsx"
 labels = ["x", "y", "z", "a", "b", "c", "d"] #positions and attitudes(in quartenion representation)
+
+XLSX.openxlsx(filename, mode="w") do xf
+    sheet = xf[1]
+    XLSX.writetable!(sheet, data, labels, anchor_cell=XLSX.CellRef("A1"))
+end
+
+#7. Write target data to Excel Sheet.
+using XLSX
+data = [
+    x_target,
+    y_target,
+    z_target
+]
+
+# Specify the file path
+filename = "Quadrotor_Targets.xlsx"
+labels = ["x", "y", "z"] #positions
 
 XLSX.openxlsx(filename, mode="w") do xf
     sheet = xf[1]

@@ -2,10 +2,12 @@ using Random
 using Plots
 
 
+export_data = []
+
 # Constants
 EMPTY,TREE, FIRE = 0,1,2
 num_iterations = 100
-grid_size = [50,50]
+grid_size = [100,100]
 forest_density = 0.7
 
 # Initialize the grid
@@ -20,13 +22,23 @@ end
 
 grid[20:25,30:35] .= FIRE  # Spawn fire in a location on the grid.
 
+initial_points = []
+for y in 20:25
+    for x in 30:35
+        push!(initial_points, x - 1/2 , y - 1/2, 1.0, 1.0, false)
+    end
+end
+push!(export_data, initial_points)
+
+
 # Wind parameters
 wind_speed = 1  # Random wind speed from 0 to 5
-wind_direction =  3*pi/2# Random wind direction in radians
+wind_direction =  pi/4# Random wind direction in radians
 
 
 # Function to update the grid using cellular automata rules
 function update_grid(grid)
+    points = []
     new_grid = copy(grid)
     for i in 2:size(grid, 1)-1, j in 2:size(grid, 2)-1
         if grid[i, j] == TREE
@@ -37,22 +49,38 @@ function update_grid(grid)
                 indexArray = findall(x -> x == FIRE, grid[i-1:i+1, j-1:j+1])
                 for index in indexArray
                     if wind_speed * cos(wind_direction - atan((2-index[2]),(2-index[1]))) > rand() #indices changed to transform the coordinate system.
-                        new_grid[i, j] = FIRE
+                        new_grid[i, j] = FIRE #the i is the y coordinate, and j is the x coordinate. In terms of grid, i=row and j=column.
+                        push!(points, j - 1/2 , j - 1/2, 1.0, 1.0, false)
                     end
                 end
             end
         end
     end
-    return new_grid
+    return new_grid, points
 end
 
 # Simulate fire propagation
 heatmap(1:grid_size[2], 1:grid_size[1], grid', c=:viridis, clim=(0, 2), color=:grays)
 for t in 1:num_iterations
-    global grid = update_grid(grid)
-    heatmap(1:grid_size[2], 1:grid_size[1], grid', c=:viridis, clim=(0, 2), color=:grays) #The transpose is done on grid, in order to change the coordinates system with x on x axis and y on y axis.
+    global grid, points = update_grid(grid)
+    p = heatmap(1:grid_size[2], 1:grid_size[1], grid', c=:viridis, clim=(0, 2), color=:grays) #The transpose is done on grid, in order to change the coordinates system with x on x axis and y on y axis.
+    display(p)
     sleep(0.5)
+
+    push!(export_data, points)
 end
 current()
 
 
+
+#print(length(export_data))
+#Sample code for writing to Excel file. 
+using XLSX
+XLSX.openxlsx("FirePoints.xlsx", mode="w") do xf
+    sheet = xf[1]
+
+    for i in eachindex(export_data)
+        sheet["A$i"] = export_data[i]
+    end
+
+end

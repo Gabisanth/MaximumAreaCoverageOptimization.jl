@@ -92,7 +92,7 @@ end
 
 
 function plot_circle(center_x, center_y, radius, plot_object)
-    θ = LinRange(0, 2π, 100)
+    θ = LinRange(0, 2π, 25)
     x = center_x .+ radius * cos.(θ)
     y = center_y .+ radius * sin.(θ)
 

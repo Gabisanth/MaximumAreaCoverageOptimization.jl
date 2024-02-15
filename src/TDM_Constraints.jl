@@ -56,15 +56,15 @@ function cons4(x)
     
     for i in 1:N
         #Velocity vector of UAV i.
-        UAV_vel = velocities[i]
+        UAV_vel = velocities[i][1:2] #only for x-y plane vector.
 
         #Velocity vector of target i.
-        Target_vel = [x[i] - single_output[i], x[i+N] - single_output[i+N], x[i+2*N] - single_output[i+2*N]]
+        Target_vel = [x[i] - single_output[i], x[i+N] - single_output[i+N]]#, x[i+2*N] - single_output[i+2*N]]
 
         #Compute Angle between the two vectors.
         angle = abs(acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel))))
 
-        if angle > 20 #user-defined maximum angle of cone.
+        if angle > 50 #user-defined maximum angle of cone.
             return false
         end
     end
