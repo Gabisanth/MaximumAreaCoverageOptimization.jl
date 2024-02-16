@@ -9,6 +9,7 @@ EMPTY,TREE, FIRE = 0,1,2
 num_iterations = 100
 grid_size = [100,100]
 forest_density = 0.7
+prob_spread = 0.5
 
 # Initialize the grid
 grid = ones(grid_size[1],grid_size[2]) #distribute trees and empty space randomly.
@@ -20,11 +21,11 @@ for i in 1:grid_size[1], j in 1:grid_size[2]
     end
 end
 
-grid[20:25,30:35] .= FIRE  # Spawn fire in a location on the grid.
+grid[45:55,45:55] .= FIRE  # Spawn fire in a location on the grid. [y,x] in terms of grid indexing.
 
 initial_points = []
-for y in 20:25
-    for x in 30:35
+for y in 45:55
+    for x in 45:55
         push!(initial_points, x - 1/2 , y - 1/2, 1.0, 1.0, false)
     end
 end
@@ -33,7 +34,7 @@ push!(export_data, initial_points)
 
 # Wind parameters
 wind_speed = 1  # Random wind speed from 0 to 5
-wind_direction =  pi/4# Random wind direction in radians
+global wind_direction = 3*pi/2# Random wind direction in radians
 
 
 # Function to update the grid using cellular automata rules
@@ -48,9 +49,9 @@ function update_grid(grid)
                 #Find which neighbours are on fire.
                 indexArray = findall(x -> x == FIRE, grid[i-1:i+1, j-1:j+1])
                 for index in indexArray
-                    if wind_speed * cos(wind_direction - atan((2-index[2]),(2-index[1]))) > rand() #indices changed to transform the coordinate system.
+                    if wind_speed * cos(wind_direction - atan((2-index[2]),(2-index[1]))) * prob_spread > rand() #|| prob_spread > rand() #indices changed to transform the coordinate system.
                         new_grid[i, j] = FIRE #the i is the y coordinate, and j is the x coordinate. In terms of grid, i=row and j=column.
-                        push!(points, j - 1/2 , j - 1/2, 1.0, 1.0, false)
+                        push!(points, i - 1/2 , j - 1/2, 1.0, 1.0, false)
                     end
                 end
             end
@@ -63,13 +64,17 @@ end
 heatmap(1:grid_size[2], 1:grid_size[1], grid', c=:viridis, clim=(0, 2), color=:grays)
 for t in 1:num_iterations
     global grid, points = update_grid(grid)
+    # if t == 50
+    #     global wind_direction = -pi/4
+    # end
     p = heatmap(1:grid_size[2], 1:grid_size[1], grid', c=:viridis, clim=(0, 2), color=:grays) #The transpose is done on grid, in order to change the coordinates system with x on x axis and y on y axis.
     display(p)
-    sleep(0.5)
+    #sleep(0.5)
 
     push!(export_data, points)
 end
 current()
+savefig("ForestFire")
 
 
 

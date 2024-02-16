@@ -13,12 +13,13 @@ using RobotZoo: Quadrotor
 using RobotDynamics
 using Plots
 using Random
+using XLSX
 
 default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 200.0            #How many seconds to run for.
+tf = 100            #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N=2                 #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -50,11 +51,32 @@ R_C = 1.0           # Collision radius
 Nm = 5              # Number of applied time-steps
 
 ##Simulation Initialisation.
-#Initialise the time-varying area of interest.
-#cir_domain = TDM_Functions.Domains_Problem([], R1, ΔR)
 
-#Initialise the points of interest.
-global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,50.0,50.0) #Create initial set of points of interest.
+#Import datapoints (for dynamically changing area of interest.)
+# Path to your Excel file
+file_path = "C://Users//gabis//Desktop//FYP Repos//MaximumAreaCoverageOptimization//src//FirePoints.xlsx"
+
+# Load the Excel file
+xlsx_file = XLSX.readxlsx(file_path)
+
+# Access the first sheet in the Excel file
+sheet = xlsx_file["Sheet1"]  # Replace "Sheet1" with the name of your sheet if different
+new_points = vec(sheet[1,:])
+filter!(!ismissing, new_points)
+
+global points_of_interest = Vector{Vector{Float64}}()
+subarray_size = 5
+
+for i in 1:subarray_size:length(new_points)
+    push!(points_of_interest, new_points[i:min(i+subarray_size-1, end)])
+end
+
+
+
+
+#Initialise the points of interest. (for static environment)
+#global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,50.0,50.0) #Create initial set of points of interest.
+
 
 
 # N = 1500.0
@@ -81,7 +103,7 @@ cons_ext = [cons1, cons2, cons3]
 cons_prog = []
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-global STATIC_input_MADS = Base_Functions.allocate_even_circles(5.0, N, 10 * tan(FOV/2), 25.0, 25.0) #returns vector of [x;y;R] values.
+global STATIC_input_MADS = Base_Functions.allocate_even_circles(5.0, N, 10* tan(FOV/2), 50.0, 50.0) #returns vector of [x;y;R] values.
 ini_circles = AreaCoverageCalculation.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 
 #Initialise area maximisation placeholders.
@@ -96,6 +118,17 @@ single_output_pb = []
 for t in 1:Nt_sim
     println("Starting iteration $t")
 
+
+    #Add new points of interest. (except for the initial timestep)
+    if t != 1
+        new_points = vec(sheet[t+1,:])
+        filter!(!ismissing, new_points)
+
+        for i in 1:subarray_size:length(new_points)
+            push!(points_of_interest, new_points[i:min(i+subarray_size-1, end)])
+        end
+    end
+
     ##Perform Area Maximization Optimization.
     # 0. Remove covered area.
     global STATIC_input_MADS = AreaCoverageCalculation.make_MADS(pre_optimized_circles_MADS) #output is of the form: [x;y;R]. Holds previous timestep location of drones for MADS.
@@ -103,7 +136,6 @@ for t in 1:Nt_sim
 
     #Remove the covered area from the list of points to explore.
     global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(drone_locs, points_of_interest)
-
 
     # 1. Set up the input at each timestep. (using previous MADS output to warm-start)
     # 2. Main area coverage optimization function.
@@ -218,8 +250,8 @@ end
 
 
 
-# #1. Plotting the target circles  at each timestep.
-# p1 = plot()
+#1. Plotting the target circles  at each timestep.
+#p1 = plot()
 # #history_TDM = cir_domain.Domain_History
 # # store the trajectory of center
 all_center_x=[]
@@ -253,7 +285,7 @@ global palettes = ["blue", "green", "orange", "purple", "cyan", "pink", "gray", 
 #     this_color = palettes[mod1(j,length(palettes))]
 
 #     for i in eachindex(single_input_pb)
-#         Base_Functions.plot_circle(all_center_x[j][i], all_center_y[j][i], all_center_R[j][i], p1)
+#         Base_Functions.plot_circle(all_center_x[j][i], all_center_y[j][i], all_center_R[j][i], p1, this_color)
 #     end
 
 
@@ -377,7 +409,7 @@ for i in 1:N
 
     plot(p, legend = :outertopright)
 
-    savefig("outputs5-$i")
+    #savefig("output5")
 
 end
 
@@ -464,7 +496,7 @@ scal = 100
 plot!(p2, grid = true, gridwidth = 3, 
     legend=:outertopright,
     legendfontsize=10,
-    xlims=(-scal,scal), ylims=(-scal,scal), zlims=(0,h_max+10),  
+    xlims=(0,scal), ylims=(0,scal), zlims=(0,h_max+10),  
     xlabel="x [m]", xguidefontsize=14, xticks = -scal+30:40:scal-30, xtickfontsize= 10,
     ylabel="y [m]", yguidefontsize=14, yticks = -scal+30:40:scal-30,  ytickfontsize= 10,
     zlabel="z [m]", zguidefontsize=14, zticks = 0:5:35, ztickfontsize= 10, zrotation = -90,
@@ -547,7 +579,6 @@ plot!(p2, grid = true, gridwidth = 3,
 
 
 #6. Write data to Excel sheet for attitude and position plotting.
-using XLSX
 data = [
     X_data,
     Y_data,
@@ -568,7 +599,6 @@ XLSX.openxlsx(filename, mode="w") do xf
 end
 
 #7. Write target data to Excel Sheet.
-using XLSX
 data = [
     x_target,
     y_target,
