@@ -19,7 +19,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 100            #How many seconds to run for.
+tf = 10            #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N=2                 #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
