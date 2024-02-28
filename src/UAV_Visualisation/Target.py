@@ -91,8 +91,8 @@ class Target():
 
         #self.ax.plot(self.x_data, self.y_data, self.z_data, 'b:')
 
-        plt.xlim(40, 70)
-        plt.ylim(40, 70)
+        plt.xlim(250, 270)
+        plt.ylim(200, 250)
         ax.set_zlim(10, 30)
 
         ax.view_init(elev=10, azim=0)

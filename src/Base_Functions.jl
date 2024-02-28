@@ -92,13 +92,11 @@ end
 
 
 function plot_circle(center_x, center_y, radius, plot_object, this_color)
-    θ = LinRange(0, 2π, 25)
+    θ = LinRange(0, 2π, 20)
     x = center_x .+ radius * cos.(θ)
     y = center_y .+ radius * sin.(θ)
 
-    plot!(plot_object, x, y, legend = false, color=this_color)
-    scatter!(plot_object, [center_x], [center_y], color="red", marker=:dot, legend = false)
-
+    plot!(plot_object, x, y, legend = false, color=this_color, fill = true)
 end
 
 

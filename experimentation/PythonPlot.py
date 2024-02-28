@@ -3,14 +3,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d import proj3d
 
-VA1 = [1, 1, 1]
-VA2 = [0.14666667296224753, 2.153588015193439, -1.860254669268945]
+VA1 = [2.02, 0.03, 0.04]
+VA2 = [2.020031836989462, 0.03, 0.0400584658415695]
 
-VB1 = [-1, -1, -1]
-VB2 = [-0.14666667296224753, -2.153588015193439, 1.8602546692689454]
+VB1 = [0, 0, 2]
+VB2 = [-0.7224245208874936, 0.0, 0.6733306666996369]
 
-PA = [0, 0, 0]
-PB = [5, 5, 5]
+PA = [0, 0, 5]
+PB = [5, 0, 0]
 
 
 def plottingVectors(ax, x_start, y_start, z_start, x_end, y_end, z_end, colour):

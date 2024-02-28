@@ -35,9 +35,23 @@
 
 # print(rad2degrees(acos(1.2)))
 
-x = [1,2,3]
-y = [4,5,6,7]
 
-z = [x]
+using Plots
 
+p1 = plot()
+function plot_shaded_circles(centers, radii; kwargs...)
+    #scatter([center[1] for center in centers], [center[2] for center in centers], markersize=0, aspect_ratio=:equal, legend=false, xlabel="X", ylabel="Y")
+    for i in 1:length(centers)
+        θ = LinRange(0, 2π, 100)
+        x = centers[i][1] .+ radii[i] .* cos.(θ)
+        y = centers[i][2] .+ radii[i] .* sin.(θ)
+        plot!(p1,x, y, fill=true, color=:blue, linecolor=:blue; kwargs...)
+    end
+end
 
+# Example centers and radii
+centers = [[0, 0], [2, 1], [-1, 2]]
+radii = [1, 0.5, 1.5]
+
+# Plotting
+plot_shaded_circles(centers, radii)

@@ -88,12 +88,12 @@ function rmvCoveredPOI(circles::Array, points::Array)
 
     for p in eachindex(points)
         for c in 1:N_circles
-            if points[p][5] == false
-                if sqrt((points[p][1] - circles[c])^2 + (points[p][2]-circles[N_circles+c])^2) < circles[2*N_circles+c]
-                    push!(indices_to_delete, p)
-                    break #If a specific point has been calculated to be captured then move onto the next point.
-                end
+            #if points[p][5] == false
+            if sqrt((points[p][1] - circles[c])^2 + (points[p][2]-circles[N_circles+c])^2) < circles[2*N_circles+c]
+                push!(indices_to_delete, p)
+                break #If a specific point has been calculated to be captured then move onto the next point.
             end
+            #end
         end
     end
 

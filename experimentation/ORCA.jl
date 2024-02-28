@@ -7,19 +7,16 @@ using LinearAlgebra
 
 using Plots
 plotly()  # Set the backend to Plotly
-# import Random
-# import Statistics
-# import Test
 
 #Input: R_A, R_B (radius of each agent), P_A, P_B (coordinates of their centres), V_A, V_B (current velocity vectors for each agent).
-R_A = 2
-R_B = 2
+R_A = 0.5
+R_B = 0.5
 
-P_A = [0 0 0]
-P_B = [5 5 5]
+P_A = [0 0 5]
+P_B = [5 0 0]
 
-V_A = [1 1 1]
-V_B = [-1 -1 -1]
+V_A = [1.0 0.0 0.0]
+V_B = [0 0 1.0]
 
 
 
@@ -51,60 +48,6 @@ function perpendicular_vectors(vector)
     v1 = cross(vec(normalized_vector), vec(cross_product))
     
     return cross_product, v1
-end
-
-function rotate_about_origin_spherical(vector, psi, elevation)
-    # Convert spherical coordinates to Cartesian coordinates
-    r = norm(vector)
-    x = vector[1]
-    y = vector[2]
-    z = vector[3]
-
-    # Compute azimuthal angle (theta)
-    theta = atand(y, x) #takes into account the correct quadrant.
-    if theta == 0
-        if x == -1
-            theta = -180
-        end
-    end
-
-
-    if x == 0 && y == 0
-        theta = 0
-    end
-
-    if theta < 0
-        theta += 360
-    end
-    
-    # Compute polar elevation angle (phi)
-    phi = acosd(z / r)
-
-    #print(phi)
-    # if x < 0
-    #     phi = -phi
-    # end
-    
-    # Perform the rotation in spherical coordinates
-    theta += psi
-
-    if x < 0
-        phi -= elevation
-    else
-        phi += elevation
-    end
-
-    #print(theta)
-    
-    # Convert back to Cartesian coordinates
-    #r = sqrt(x^2 + y^2 + z^2)
-    #phi = clamp(phi, 0, π)  # Clamp phi within [0, π] range to ensure it stays within spherical coordinates
-    #theta = atand(y/ x)
-    
-    # Convert back to vector
-    rotated_vector = [r * sind(phi) * cosd(theta), r * sind(phi) * sind(theta), r * cosd(phi)]
-    
-    return rotated_vector
 end
 
 
@@ -144,36 +87,6 @@ function rotate_about_arbitrary_axis(vector, axis, angle)
     return normalize(rotated_vector)
 end
 
-
-function angle_between_vector_and_plane(vector, plane_normal)
-    # Normalize the vectors
-    vector_norm = normalize(vector)
-    plane_normal_norm = normalize(plane_normal)
-    
-    # Calculate the dot product between the vector and the plane normal
-    dot_product = dot(vector_norm, plane_normal_norm)
-    
-    # Calculate the angle using the arccosine function
-    angle = 90 - acosd(dot_product)
-
-    
-    return angle
-end
-
-function angle_between_planes(plane1_normal, plane2_normal)
-    # Normalize normal vectors
-    plane1_normal_normalized = normalize(plane1_normal)
-    plane2_normal_normalized = normalize(plane2_normal)
-    
-    # Compute dot product
-    dot_product = dot(plane1_normal_normalized, plane2_normal_normalized)
-    
-    # Calculate angle 
-    angle = acosd(dot_product)
-    
-    return angle
-end
-
 function vector_between_planes(vector, normal1, normal2)
     dot_product1 = dot(vector, normal1)
     dot_product2 = dot(vector, normal2)
@@ -187,7 +100,6 @@ function vector_between_planes(vector, normal1, normal2)
 end
 
 function shortest_vector_to_plane(point, normal)
-    ##NEED TO FIX!!!
     #project the position vector onto the (negative) normal vector.
     alpha = angle_between_vectors(point, normal)
     theta = 90 - alpha
@@ -197,79 +109,6 @@ function shortest_vector_to_plane(point, normal)
     
     return projection
 end
-
-
-function rotate_x(vector, angle)
-    # Convert angle to radians
-    angle_rad = deg2rad(angle)
-    
-    # Define the rotation matrix
-    rotation_matrix = [
-        1      0           0;
-        0      cos(angle_rad)  -sin(angle_rad);
-        0      sin(angle_rad)   cos(angle_rad)
-    ]
-    
-    # Convert vector to column matrix
-    vector_matrix = reshape(vector, 3, 1)
-    
-    # Rotate the vector
-    rotated_vector_matrix = rotation_matrix * vector_matrix
-    
-    # Convert back to vector
-    rotated_vector = reshape(rotated_vector_matrix, 3)
-    
-    return rotated_vector
-end
-
-function rotate_y(vector, angle)
-    # Convert angle to radians
-    angle_rad = deg2rad(angle)
-    
-    # Define the rotation matrix
-    rotation_matrix = [
-        cos(angle_rad)   0   sin(angle_rad);
-        0                1   0;
-        -sin(angle_rad)  0   cos(angle_rad)
-    ]
-    
-    # Convert vector to column matrix
-    vector_matrix = reshape(vector, 3, 1)
-    
-    # Rotate the vector
-    rotated_vector_matrix = rotation_matrix * vector_matrix
-    
-    # Convert back to vector
-    rotated_vector = reshape(rotated_vector_matrix, 3)
-    
-    return rotated_vector
-end
-
-function rotate_z(vector, angle)
-    # Convert angle to radians
-    angle_rad = deg2rad(angle)
-    
-    # Define the rotation matrix
-    rotation_matrix = [
-        cos(angle_rad)  -sin(angle_rad)  0;
-        sin(angle_rad)   cos(angle_rad)  0;
-        0                0               1
-    ]
-    
-    # Convert vector to column matrix
-    vector_matrix = reshape(vector, 3, 1)
-    
-    # Rotate the vector
-    rotated_vector_matrix = rotation_matrix * vector_matrix
-    
-    # Convert back to vector
-    rotated_vector = reshape(rotated_vector_matrix, 3)
-    
-    return rotated_vector
-end
-
-
-
 
 
 function ORCA_2D(R_A, R_B, P_A, P_B, V_A, V_B) #atm it only works if the relative velocity vector is within the velocity obstacle.
@@ -312,7 +151,7 @@ function ORCA_2D(R_A, R_B, P_A, P_B, V_A, V_B) #atm it only works if the relativ
 end
 
 
-function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B)
+function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility)
     ##1. Get edges of velocity obstacle for A induced by B.
     centre = P_B - P_A #position vector to the centre of the sphere.
     r = R_A + R_B
@@ -350,6 +189,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B)
         collision = true
     else
         collision = false
+        return V_A, collision
     end
 
     #Get u vector. Smallest vector to edge of velocity obstacle cone.
@@ -378,7 +218,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B)
     @variable(model, Vy)
     @variable(model, Vz)
     @objective(model, Min, (Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2)
-    @constraint(model, c1, dot([Vx Vy Vz] - V_A - 0.5*u, n) >= 0)
+    @constraint(model, c1, dot([Vx Vy Vz] - V_A - responsibility*u, n) >= 0)
     optimize!(model)
 
     #Output: New Velocity Vector for A (and B).
@@ -482,10 +322,20 @@ end
 
 #println(ORCA_3DCone(R_A, R_B, P_A, P_B, V_A, V_B, 0.5, 0.5))
 
-v1 = (ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B))
-v2 = (ORCA_3D(R_B, R_A, P_B, P_A, V_B, V_A))
+vAnew, collisionA = (ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, 0.0))
+vBnew, collisionB= (ORCA_3D(R_B, R_A, P_B, P_A, V_B, V_A, 1.0))
 
-print(v1,v2)
+
+println(V_A)
+println(vAnew)
+
+println(V_B)
+println(vBnew)
+
+println(P_A)
+println(P_B)
+
+println("Collision expected? ", collisionA, " & ", collisionB)
 
 
 

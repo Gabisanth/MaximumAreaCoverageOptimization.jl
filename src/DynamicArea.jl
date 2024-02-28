@@ -6,8 +6,8 @@ export_data = []
 
 # Constants
 EMPTY,TREE, FIRE = 0,1,2
-num_iterations = 100
-grid_size = [100,100]
+num_iterations = 200
+grid_size = [500,500]
 forest_density = 0.7
 prob_spread = 0.5
 
@@ -21,11 +21,11 @@ for i in 1:grid_size[1], j in 1:grid_size[2]
     end
 end
 
-grid[45:55,45:55] .= FIRE  # Spawn fire in a location on the grid. [y,x] in terms of grid indexing.
+grid[230:270,230:270] .= FIRE  # Spawn fire in a location on the grid. [y,x] in terms of grid indexing.
 
 initial_points = []
-for y in 45:55
-    for x in 45:55
+for y in 230:270
+    for x in 230:270
         push!(initial_points, x - 1/2 , y - 1/2, 1.0, 1.0, false)
     end
 end
