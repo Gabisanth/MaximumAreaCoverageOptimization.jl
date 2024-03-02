@@ -3,15 +3,18 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d import proj3d
 
-VA1 = [2.02, 0.03, 0.04]
-VA2 = [2.020031836989462, 0.03, 0.0400584658415695]
+VA1 = [1.0, 0.0, 0.0]
+VA2 = [0.8435605801768041, 0.3763152202345183, 0.4628760941861171]
 
-VB1 = [0, 0, 2]
-VB2 = [-0.7224245208874936, 0.0, 0.6733306666996369]
+VB1 = [-1.0, 0.0, 0.0]
+VB2 = [-0.3968329626825467, -0.27125105102504865, 0.0]
+
+VC1 = [0.0, -1.0, 0.0]
+VC2 = [0.21343036024526316, -0.6607613766812254, -0.3022150932581222]
 
 PA = [0, 0, 5]
-PB = [5, 0, 0]
-
+PB = [10, 0, 5]
+PC = [5, 5, 5]
 
 def plottingVectors(ax, x_start, y_start, z_start, x_end, y_end, z_end, colour):
 
@@ -44,8 +47,12 @@ fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 plottingVectors(ax, PA[0], PA[1], PA[2], PA[0] + VA1[0], PA[1] + VA1[1], PA[2] + VA1[2], 'blue')
 plottingVectors(ax, PA[0], PA[1], PA[2], PA[0] + VA2[0], PA[1] + VA2[1], PA[2] + VA2[2], 'red')
+
 plottingVectors(ax, PB[0], PB[1], PB[2], PB[0] + VB1[0], PB[1] + VB1[1], PB[2] + VB1[2], 'blue')
 plottingVectors(ax, PB[0], PB[1], PB[2], PB[0] + VB2[0], PB[1] + VB2[1], PB[2] + VB2[2], 'red')
+
+plottingVectors(ax, PC[0], PC[1], PC[2], PC[0] + VC1[0], PC[1] + VC1[1], PC[2] + VC1[2], 'blue')
+plottingVectors(ax, PC[0], PC[1], PC[2], PC[0] + VC2[0], PC[1] + VC2[1], PC[2] + VC2[2], 'red')
 
 plt.legend(['Before', 'After'], loc='upper left')
 # Show the plot

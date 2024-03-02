@@ -109,7 +109,7 @@ cons_ext = cons1
 cons_prog = []
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-global STATIC_input_MADS = Base_Functions.allocate_even_circles(5.0, N, 10 * tan(FOV/2), 250.0, 250.0) #returns vector of [x;y;R] values.
+global STATIC_input_MADS = Base_Functions.allocate_even_circles(2.0, N, 10 * tan(FOV/2), 250.0, 250.0) #returns vector of [x;y;R] values.
 ini_circles = AreaCoverageCalculation.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 
 #Initialise area maximisation placeholders.
@@ -152,10 +152,10 @@ for t in 1:Nt_sim
     #To set new height limit in certain regions for improved resolution. By changing the height constraint.
     if t != 1
         for i in 1:N
-            if single_output[i+N] < 220 && single_output[i+N] > 180 
+            if single_output[i+N] < 220 && single_output[i+N] > 180 && single_output[i] < 220 && single_output[i] > 180 
                 #single_output[i+2*N] = 15 * tan(FOV/2) #an initial guess that won't violate constraint.
                 #global d_lim[i] = 15.0
-                global r_max[i] = 15 * tan(FOV/2)
+                global r_max[i] = 10 * tan(FOV/2)
     
                 # #Temporary fix. Needs to be resolved by creating r_max term for each drone. Possibly d_lim for each too.
                 # single_output[1+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
@@ -164,7 +164,7 @@ for t in 1:Nt_sim
             
             else
                 #global d_lim[i] = 9.2
-                global r_max[i] = 20 * tan(FOV/2)
+                global r_max[i] = h_max * tan(FOV/2)
 
             end
         end
@@ -178,7 +178,7 @@ for t in 1:Nt_sim
         global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R].
     else
         single_input = single_output
-        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons5], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
+        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons4, cons5], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
     end
     
     if STATIC_output == false

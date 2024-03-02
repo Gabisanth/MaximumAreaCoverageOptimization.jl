@@ -9,14 +9,17 @@ using Plots
 plotly()  # Set the backend to Plotly
 
 #Input: R_A, R_B (radius of each agent), P_A, P_B (coordinates of their centres), V_A, V_B (current velocity vectors for each agent).
-R_A = 0.5
-R_B = 0.5
+R_A = 1
+R_B = 1
+R_C = 1
 
 P_A = [0 0 5]
-P_B = [5 0 0]
+P_B = [10 0 5]
+P_C = [5 5 5]
 
-V_A = [1.0 0.0 0.0]
-V_B = [0 0 1.0]
+V_A = [1.03 0.02 0.01]
+V_B = [-1.0 0 0.0]
+V_C = [0.0 -1.0 0.0]
 
 
 
@@ -152,63 +155,87 @@ end
 
 
 function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility)
-    ##1. Get edges of velocity obstacle for A induced by B.
-    centre = P_B - P_A #position vector to the centre of the sphere.
-    r = R_A + R_B
 
-    cone_angle = asind(r / norm(centre))
+    u_all = []
+    n_all = []
+    collision_status = []
 
-    #Need 2 sets of edges to (approximate) the cone. (actually will be a square based pyramid instead of a cone).
-    axis1, axis2 = perpendicular_vectors(centre)
 
-    cone_edge_1 = rotate_about_arbitrary_axis(centre, axis1, cone_angle*pi/180)
-    cone_edge_2 = rotate_about_arbitrary_axis(centre, axis1, -cone_angle*pi/180)
+    for i in eachindex(R_B)
+        ##1. Get edges of velocity obstacle for A induced by B.
+        centre = P_B[i] - P_A #position vector to the centre of the sphere.
+        r = R_A + R_B[i]
 
-    cone_edge_3 = rotate_about_arbitrary_axis(centre, axis2, cone_angle*pi/180)
-    cone_edge_4 = rotate_about_arbitrary_axis(centre, axis2, -cone_angle*pi/180)
+        cone_angle = asind(r / norm(centre))
 
-    ##2. Check if relative velocity vector is inside velocity obstacle.
-    #Find normal vector to each of the cone edge planes.
-    n1 = -1*cone_edge_1*(norm(centre)*cosd(cone_angle)) + vec(centre) #normal vector is the centre to where the cone_edge touches the sphere.
-    n2 = -1*cone_edge_2*(norm(centre)*cosd(cone_angle)) + vec(centre)
-    n3 = -1*cone_edge_3*(norm(centre)*cosd(cone_angle)) + vec(centre)
-    n4 = -1*cone_edge_4*(norm(centre)*cosd(cone_angle)) + vec(centre)
+        #Need 2 sets of edges to (approximate) the cone. (actually will be a square based pyramid instead of a cone).
+        axis1, axis2 = perpendicular_vectors(centre)
 
-    rel_vel = V_A - V_B
+        cone_edge_1 = rotate_about_arbitrary_axis(centre, axis1, cone_angle*pi/180)
+        cone_edge_2 = rotate_about_arbitrary_axis(centre, axis1, -cone_angle*pi/180)
 
-    # println(angle_between_planes(-n1,n2))
-    # println(angle_between_vector_and_plane(rel_vel, n1))
-    # println(angle_between_vector_and_plane(rel_vel,n2))
+        cone_edge_3 = rotate_about_arbitrary_axis(centre, axis2, cone_angle*pi/180)
+        cone_edge_4 = rotate_about_arbitrary_axis(centre, axis2, -cone_angle*pi/180)
 
-    # println(angle_between_planes(-n3,n4))
-    # println(angle_between_vector_and_plane(rel_vel, n3))
-    # println(angle_between_vector_and_plane(rel_vel,n4))
+        ##2. Check if relative velocity vector is inside velocity obstacle.
+        #Find normal vector to each of the cone edge planes.
+        n1 = -1*cone_edge_1*(norm(centre)*cosd(cone_angle)) + vec(centre) #normal vector is the centre to where the cone_edge touches the sphere.
+        n2 = -1*cone_edge_2*(norm(centre)*cosd(cone_angle)) + vec(centre)
+        n3 = -1*cone_edge_3*(norm(centre)*cosd(cone_angle)) + vec(centre)
+        n4 = -1*cone_edge_4*(norm(centre)*cosd(cone_angle)) + vec(centre)
 
-    #check if relative velocity is within the velocity obstacle.
-    if vector_between_planes(rel_vel, n1, n2) && vector_between_planes(rel_vel, n3, n4)
-        collision = true
-    else
-        collision = false
-        return V_A, collision
+        rel_vel = V_A - V_B[i]
+
+        # println(angle_between_planes(-n1,n2))
+        # println(angle_between_vector_and_plane(rel_vel, n1))
+        # println(angle_between_vector_and_plane(rel_vel,n2))
+
+        # println(angle_between_planes(-n3,n4))
+        # println(angle_between_vector_and_plane(rel_vel, n3))
+        # println(angle_between_vector_and_plane(rel_vel,n4))
+
+        #check if relative velocity is within the velocity obstacle.
+        if vector_between_planes(rel_vel, n1, n2) && vector_between_planes(rel_vel, n3, n4)
+            collision = true
+
+            u1 = shortest_vector_to_plane(rel_vel,n1)
+            u2 = shortest_vector_to_plane(rel_vel,n2)
+            u3 = shortest_vector_to_plane(rel_vel,n3)
+            u4 = shortest_vector_to_plane(rel_vel,n4)
+        
+            u_array = [u1,u2,u3,u4]
+            u_norm_array = [norm(u_array[1]), norm(u_array[2]), norm(u_array[3]), norm(u_array[4])]
+            u_min_index = argmin(u_norm_array)
+            u = u_array[u_min_index]
+        else
+            collision = false
+            #If relative velocity is outside of the collision cone, then the u will need to be calculated differently.
+            if dot(rel_vel, centre) < 0
+                u = -1 * rel_vel
+            else
+                u1 = shortest_vector_to_plane(rel_vel,n1)
+                u2 = shortest_vector_to_plane(rel_vel,n2)
+                u3 = shortest_vector_to_plane(rel_vel,n3)
+                u4 = shortest_vector_to_plane(rel_vel,n4)
+            
+                u_array = [u1,u2,u3,u4]
+                u_norm_array = [norm(u_array[1]), norm(u_array[2]), norm(u_array[3]), norm(u_array[4])]
+                u_min_index = argmin(u_norm_array)
+                u = u_array[u_min_index]
+            end
+
+
+        end
+
+        #Get u and n vector. Smallest vector to edge of velocity obstacle cone.
+        n = u/norm(u)
+        u = [u[1] u[2] u[3]]
+        n = [n[1] n[2] n[3]]
+        push!(u_all, u)
+        push!(n_all, n)
+        push!(collision_status, collision)
+
     end
-
-    #Get u vector. Smallest vector to edge of velocity obstacle cone.
-    
-    u1 = shortest_vector_to_plane(rel_vel,n1)
-    u2 = shortest_vector_to_plane(rel_vel,n2)
-    u3 = shortest_vector_to_plane(rel_vel,n3)
-    u4 = shortest_vector_to_plane(rel_vel,n4)
-
-
-    u_array = [u1,u2,u3,u4]
-    u_norm_array = [norm(u_array[1]), norm(u_array[2]), norm(u_array[3]), norm(u_array[4])]
-    u_min_index = argmin(u_norm_array)
-    u = u_array[u_min_index]
-    n = u/norm(u)
-    u = [u[1] u[2] u[3]]
-    n = [n[1] n[2] n[3]]
-
-
   
 
     #Perform the optimization for velocity of A (and B).
@@ -218,12 +245,21 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility)
     @variable(model, Vy)
     @variable(model, Vz)
     @objective(model, Min, (Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2)
-    @constraint(model, c1, dot([Vx Vy Vz] - V_A - responsibility*u, n) >= 0)
+
+    for i in eachindex(R_B)
+
+        if collision_status[i]
+            @constraint(model, dot([Vx Vy Vz] - V_A - responsibility*u_all[i], n_all[i]) >= 0)
+        else
+            @constraint(model, dot([Vx Vy Vz] - V_A - responsibility*u_all[i], n_all[i]) <= 0)
+        end
+    end
     optimize!(model)
+    
 
     #Output: New Velocity Vector for A (and B).
     V_opt = [value(Vx) value(Vy) value(Vz)]
-    return V_opt, collision
+    return V_opt
 
 
     # println(n1,n2)
@@ -322,9 +358,9 @@ end
 
 #println(ORCA_3DCone(R_A, R_B, P_A, P_B, V_A, V_B, 0.5, 0.5))
 
-vAnew, collisionA = (ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, 0.0))
-vBnew, collisionB= (ORCA_3D(R_B, R_A, P_B, P_A, V_B, V_A, 1.0))
-
+vAnew = (ORCA_3D(R_A, [R_B, R_C], P_A, [P_B, P_C], V_A, [V_B, V_C], 0.5))
+vBnew = (ORCA_3D(R_B, [R_A, R_C], P_B, [P_A, P_C], V_B, [V_A, V_C], 0.5))
+vCnew = (ORCA_3D(R_C, [R_A, R_B], P_C, [P_A, P_B], V_C, [V_A, V_B], 0.5))
 
 println(V_A)
 println(vAnew)
@@ -332,10 +368,12 @@ println(vAnew)
 println(V_B)
 println(vBnew)
 
+println(V_C)
+println(vCnew)
+
 println(P_A)
 println(P_B)
-
-println("Collision expected? ", collisionA, " & ", collisionB)
+println(P_C)
 
 
 
