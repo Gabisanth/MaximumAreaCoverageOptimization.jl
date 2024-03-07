@@ -12,16 +12,18 @@ plotly()  # Set the backend to Plotly
 R_A = 1
 R_B = 1
 R_C = 1
+R_D = 1
 
 P_A = [0 0 5]
 P_B = [10 0 5]
 P_C = [5 5 5]
-
-V_A = [1.03 0.02 0.01]
-V_B = [-1.0 0 0.0]
-V_C = [0.0 -1.0 0.0]
+P_D = [5 -5 5]
 
 
+V_A = [1.3800686994026599 0.00013780006245030148 0.48575274994122086] + reshape(rand(-0.001:0.0000001:0.001, 3), 1, 3)
+V_B = [-1.1396914990757603 -0.3395463989085548 -0.47977725204214267] + reshape(rand(-0.001:0.0000001:0.001, 3), 1, 3)
+V_C = [0.2515407486958495 -0.46056250126052556 0.0003948999930730791]+ reshape(rand(-0.001:0.0000001:0.001, 3), 1, 3)
+V_D = [-0.3539174409687131 0.7378751280079052 0.2885905518767432] + reshape(rand(-0.001:0.0000001:0.001, 3), 1, 3)
 
 
 
@@ -254,6 +256,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility)
             @constraint(model, dot([Vx Vy Vz] - V_A - responsibility*u_all[i], n_all[i]) <= 0)
         end
     end
+    @constraint(model, ((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2) <= (0.5)^2) #Physical limits included.
     optimize!(model)
     
 
@@ -358,9 +361,12 @@ end
 
 #println(ORCA_3DCone(R_A, R_B, P_A, P_B, V_A, V_B, 0.5, 0.5))
 
-vAnew = (ORCA_3D(R_A, [R_B, R_C], P_A, [P_B, P_C], V_A, [V_B, V_C], 0.5))
-vBnew = (ORCA_3D(R_B, [R_A, R_C], P_B, [P_A, P_C], V_B, [V_A, V_C], 0.5))
-vCnew = (ORCA_3D(R_C, [R_A, R_B], P_C, [P_A, P_B], V_C, [V_A, V_B], 0.5))
+vAnew = (ORCA_3D(R_A, [R_B, R_C, R_D], P_A, [P_B, P_C, P_D], V_A, [V_B, V_C, V_D], 0.5))
+vBnew = (ORCA_3D(R_B, [R_A, R_C, R_D], P_B, [P_A, P_C, P_D], V_B, [V_A, V_C, V_D], 0.5))
+vCnew = (ORCA_3D(R_C, [R_A, R_B, R_D], P_C, [P_A, P_B, P_D], V_C, [V_A, V_B, V_D], 0.5))
+vDnew = (ORCA_3D(R_D, [R_A, R_B, R_C], P_D, [P_A, P_B, P_C], V_D, [V_A, V_B, V_C], 0.5))
+
+
 
 println(V_A)
 println(vAnew)
@@ -371,9 +377,12 @@ println(vBnew)
 println(V_C)
 println(vCnew)
 
+println(V_D)
+println(vDnew)
+
 println(P_A)
 println(P_B)
 println(P_C)
-
+println(P_D)
 
 
