@@ -63,6 +63,29 @@ function allocate_even_circles(r_centering_cir::Float64, N, r_uav::Float64, cent
 
 end
 
+
+
+function allocate_even_circles_in_a_line(separationx::Float64, separationy::Float64, N, r_uav::Float64, center_x, center_y)
+    # Generate circles
+    x_arr = Vector{Float64}(undef,0)
+    y_arr = Vector{Float64}(undef,0)
+    r_arr = Vector{Float64}(undef,0)
+
+    for i in 1:N
+        
+        x = center_x + separationx*i
+        y = center_y + separationy*i
+        r = r_uav
+
+        push!(x_arr,x)
+        push!(y_arr,y)
+        push!(r_arr,r)
+    end
+
+    return [x_arr;y_arr;r_arr]
+
+end
+
 function MADS_to_ALTRO(z::Vector{Float64})
 
     N = Int(length(z)/3)

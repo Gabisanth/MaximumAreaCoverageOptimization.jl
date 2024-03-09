@@ -62,7 +62,7 @@ xlsx_file = XLSX.readxlsx(file_path)
 
 # Access the first sheet in the Excel file
 sheet = xlsx_file["Sheet1"]  # Replace "Sheet1" with the name of your sheet if different
-new_points = vec(sheet[1:5,:])
+new_points = vec(sheet[1:1,:])
 filter!(!ismissing, new_points)
 
 global points_of_interest = Vector{Vector{Float64}}()
@@ -74,7 +74,7 @@ end
 
 
 #Initialise the points of interest. (for static environment)
-#global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,50.0,50.0) #Create initial set of points of interest.
+#global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,500.0,500.0) #Create initial set of points of interest.
 
 
 
@@ -103,13 +103,18 @@ end
 
 #@timev AreaMaxObjective(x)
 
+#Define Known Interesting region boundaries.
+x_LB = [225, 10]
+x_UB = [275, 20] 
+y_LB = [175, 10]
+y_UB = [225, 20]
 
 # Define extreme and progressive constraints
 cons_ext = cons1
 cons_prog = []
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-global STATIC_input_MADS = Base_Functions.allocate_even_circles(2.0, N, 10 * tan(FOV/2), 250.0, 250.0) #returns vector of [x;y;R] values.
+global STATIC_input_MADS = Base_Functions.allocate_even_circles(2.0, N, 10 * tan(FOV/2), 250.0, 250.0)#returns vector of [x;y;R] values.
 ini_circles = AreaCoverageCalculation.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 
 #Initialise area maximisation placeholders.
@@ -131,12 +136,26 @@ for t in 1:Nt_sim
     end
 
     #Add new points of interest. (except for the initial timestep)
+    # if t != 1
+    #     new_points = vec(sheet[t+5,:])
+    #     filter!(!ismissing, new_points)
+
+    #     for i in 1:subarray_size:length(new_points)
+    #         push!(points_of_interest, new_points[i:min(i+subarray_size-1, end)])
+    #     end
+    # end
+
     if t != 1
         new_points = vec(sheet[t+5,:])
         filter!(!ismissing, new_points)
 
         for i in 1:subarray_size:length(new_points)
-            push!(points_of_interest, new_points[i:min(i+subarray_size-1, end)])
+            new_point = new_points[i:min(i+subarray_size-1, end)]
+            check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
+            if any(check)
+                new_point[4] = 50.0
+            end
+            push!(points_of_interest, new_point)
         end
     end
 
@@ -150,17 +169,34 @@ for t in 1:Nt_sim
 
 
     #To set new height limit in certain regions for improved resolution. By changing the height constraint.
+    # if t != 1
+    #     for i in 1:N
+    #         if single_output[i+N] < 220 && single_output[i+N] > 180 && single_output[i] < 220 && single_output[i] > 180 
+    #             #single_output[i+2*N] = 15 * tan(FOV/2) #an initial guess that won't violate constraint.
+    #             #global d_lim[i] = 15.0
+    #             global r_max[i] = 10 * tan(FOV/2)
+    
+    #             # #Temporary fix. Needs to be resolved by creating r_max term for each drone. Possibly d_lim for each too.
+    #             # single_output[1+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
+    #             # single_output[2+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
+    #             # single_output[3+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
+            
+    #         else
+    #             #global d_lim[i] = 9.2
+    #             global r_max[i] = h_max * tan(FOV/2)
+
+    #         end
+    #     end
+    # end
+
     if t != 1
         for i in 1:N
-            if single_output[i+N] < 220 && single_output[i+N] > 180 && single_output[i] < 220 && single_output[i] > 180 
+            check = drone_locs[i] .< x_UB .&& drone_locs[i] .> x_LB  .&& drone_locs[i+N] .< y_UB .&& drone_locs[i+N] .> y_LB  
+
+            if any(check)
                 #single_output[i+2*N] = 15 * tan(FOV/2) #an initial guess that won't violate constraint.
                 #global d_lim[i] = 15.0
                 global r_max[i] = 10 * tan(FOV/2)
-    
-                # #Temporary fix. Needs to be resolved by creating r_max term for each drone. Possibly d_lim for each too.
-                # single_output[1+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
-                # single_output[2+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
-                # single_output[3+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
             
             else
                 #global d_lim[i] = 9.2

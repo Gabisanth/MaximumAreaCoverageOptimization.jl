@@ -21,11 +21,11 @@ for i in 1:grid_size[1], j in 1:grid_size[2]
     end
 end
 
-grid[230:270,230:270] .= FIRE  # Spawn fire in a location on the grid. [y,x] in terms of grid indexing.
+grid[200:300,245:255] .= FIRE  # Spawn fire in a location on the grid. [x,y] in terms of grid indexing.
 
 initial_points = []
-for y in 230:270
-    for x in 230:270
+for y in 240:260
+    for x in 220:280
         push!(initial_points, x - 1/2 , y - 1/2, 1.0, 1.0, false)
     end
 end
@@ -33,8 +33,8 @@ push!(export_data, initial_points)
 
 
 # Wind parameters
-wind_speed = 1  # Random wind speed from 0 to 5
-global wind_direction = 3*pi/2# Random wind direction in radians
+wind_speed = 4  # Random wind speed from 0 to 5
+global wind_direction = deg2rad(270)#3*pi/2# Random wind direction in radians
 
 
 # Function to update the grid using cellular automata rules

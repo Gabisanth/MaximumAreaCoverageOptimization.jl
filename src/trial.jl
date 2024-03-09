@@ -36,22 +36,27 @@
 # print(rad2degrees(acos(1.2)))
 
 
-using Plots
+# using Plots
 
-p1 = plot()
-function plot_shaded_circles(centers, radii; kwargs...)
-    #scatter([center[1] for center in centers], [center[2] for center in centers], markersize=0, aspect_ratio=:equal, legend=false, xlabel="X", ylabel="Y")
-    for i in 1:length(centers)
-        θ = LinRange(0, 2π, 100)
-        x = centers[i][1] .+ radii[i] .* cos.(θ)
-        y = centers[i][2] .+ radii[i] .* sin.(θ)
-        plot!(p1,x, y, fill=true, color=:blue, linecolor=:blue; kwargs...)
-    end
-end
+# p1 = plot()
+# function plot_shaded_circles(centers, radii; kwargs...)
+#     #scatter([center[1] for center in centers], [center[2] for center in centers], markersize=0, aspect_ratio=:equal, legend=false, xlabel="X", ylabel="Y")
+#     for i in 1:length(centers)
+#         θ = LinRange(0, 2π, 100)
+#         x = centers[i][1] .+ radii[i] .* cos.(θ)
+#         y = centers[i][2] .+ radii[i] .* sin.(θ)
+#         plot!(p1,x, y, fill=true, color=:blue, linecolor=:blue; kwargs...)
+#     end
+# end
 
-# Example centers and radii
-centers = [[0, 0], [2, 1], [-1, 2]]
-radii = [1, 0.5, 1.5]
+# # Example centers and radii
+# centers = [[0, 0], [2, 1], [-1, 2]]
+# radii = [1, 0.5, 1.5]
 
-# Plotting
-plot_shaded_circles(centers, radii)
+# # Plotting
+# plot_shaded_circles(centers, radii)
+using LinearAlgebra
+UAV_vel = [1,1]
+Target_vel = [-1, 0]
+
+print(abs(acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))))
