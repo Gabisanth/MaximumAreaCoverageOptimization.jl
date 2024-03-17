@@ -63,10 +63,11 @@ function calculateArea(circles::Vector{Float64}, points::Vector{Vector{Float64}}
     area_covered = 0.0
     N_circles = Int(length(circles)/3)
 
-    for p in eachindex(points)
+    for p in 1:length(points)#eachindex(points)
         for c in 1:N_circles
             #if points[p][5] == false
             if sqrt((points[p][1] - circles[c])^2 + (points[p][2]-circles[N_circles+c])^2) < circles[2*N_circles+c]
+                #Threads.atomic_add!(area_covered, 1)
                 area_covered += points[p][4]
                 #points[p][5] = true
                 break #if the current point in iteration is captured then can continue to next point.
@@ -74,6 +75,19 @@ function calculateArea(circles::Vector{Float64}, points::Vector{Vector{Float64}}
             #end
         end
     end
+
+    
+    # for c in 1:N_circles
+    #     for p in 1:length(points)#eachindex(points)
+    #         #if points[p][5] == false
+    #         if sqrt((points[p][1] - circles[c])^2 + (points[p][2]-circles[N_circles+c])^2) < circles[2*N_circles+c]
+    #             area_covered += points[p][4]
+    #             #points[p][5] = true
+    #             #break #if the current point in iteration is captured then can continue to next point.
+    #         end
+    #         #end
+    #     end
+    # end
 
     #Output the total area covered.
     return area_covered
@@ -89,7 +103,7 @@ function rmvCoveredPOI(circles::Array, points::Array)
     for p in eachindex(points)
         for c in 1:N_circles
             if sqrt((points[p][1] - circles[c])^2 + (points[p][2]-circles[N_circles+c])^2) < circles[2*N_circles+c]
-                # if points[p][4] == 50.0 && abs(circles[2*N_circles+c] - 10 * tan((80/180*π)/2)) > 1.0
+                # if points[p][4] == 250.0 && abs(circles[2*N_circles+c] - 10 * tan((80/180*π)/2)) > 1.0
                 #     break
                 # else
                 push!(indices_to_delete, p)

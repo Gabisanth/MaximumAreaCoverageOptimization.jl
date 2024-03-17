@@ -1,6 +1,6 @@
 # Modified based on Logan's codes: https://github.com/Logan1904/FYP_Optimization
-include("Base_Functions.jl")
-using .Base_Functions
+#include("Base_Functions.jl")
+#using .Base_Functions
 
 include("AreaCoverageCalculation.jl")
 
@@ -63,7 +63,7 @@ function cons4(x)
         Target_vel = [x[i] - single_output[i], x[i+N] - single_output[i+N]]#, x[i+2*N] - single_output[i+2*N]]
 
         #Compute Angle between the two vectors.
-        angle = abs(acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel))))
+        angle = abs(acosd(round(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))))
 
         if angle > 90 #user-defined maximum angle of cone.
             return false
@@ -130,12 +130,38 @@ end
 function cons1_progressive(x)
 
     violation = 0
+    i=1
+    #for i in range(1,stop=Int(length(x)/3))
+    R_val = x[N*2 + i]
+    violation += abs(R_val - r_max[i])
+    #end
 
-    for i in range(1,stop=Int(length(x)/3))
-        R_val = x[N*2 + i]
-        violation += R_val - resolution_height[i]
-    end
+    return violation
 
-    return violation*1000
+end
+
+function cons2_progressive(x)
+
+    violation = 0
+    i=2
+    #for i in range(1,stop=Int(length(x)/3))
+    R_val = x[N*2 + i]
+    violation += abs(R_val - r_max[i])
+    #end
+
+    return violation
+
+end
+
+function cons3_progressive(x)
+
+    violation = 0
+    i=3
+    #for i in range(1,stop=Int(length(x)/3))
+    R_val = x[N*2 + i]
+    violation += abs(R_val - r_max[i])
+    #end
+
+    return violation
 
 end

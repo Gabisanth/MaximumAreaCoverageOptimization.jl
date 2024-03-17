@@ -56,7 +56,84 @@
 # # Plotting
 # plot_shaded_circles(centers, radii)
 using LinearAlgebra
-UAV_vel = [1,1]
-Target_vel = [-1, 0]
+# UAV_vel = [1,1]
+# Target_vel = [-1, 0]
 
-print(abs(acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))))
+# print(abs(acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))))
+
+# function sum_multi_bad(a)
+#     s = Threads.Atomic{Int64}(0)
+#     Threads.@threads for i in a
+#         UAV_vel = [i ,0 ,1]
+#         Target_vel = [1 ,3 ,i]
+#         ans = acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))
+#         ans = acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))
+#         ans = acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))
+#         ans = acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))
+#         ans = acosd(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))
+#         for j in 1:2013
+#             e = j
+#         end
+#         Threads.atomic_add!(s, i)
+#     end
+#     return s
+# end
+# @timev sum_multi_bad(1:200000)
+
+
+
+
+
+# a = zeros(10)
+# Threads.@threads for i = 1:10
+#     a[i] = Threads.threadid()
+# end
+# print(a)
+
+# using Base.Threads
+# import Statistics
+
+# myrand(x::Int64) = (1103515245x + 12345) % 2^31
+
+# function estimatepi(n)
+#     r = threadid()
+#     count = 0
+#     for i=1:n
+#         r = myrand(r)
+#         x = r/2^31
+#         r = myrand(r)
+#         y = r/2^31
+#         count += (x^2 + y^2) <= 1
+#     end
+
+#     return 4*count/n
+# end
+
+# nt = nthreads()
+# println("The number of threads : $nt")
+# estimates = zeros(nt)
+
+# timestart = time()
+# @threads for i=1:nt
+#     estimates[i] = estimatepi(10000000/nt)
+# end
+
+# estpi = Statistics.mean(estimates)
+# elapsed = time() - timestart
+
+# println("The estimate for Pi : $estpi")
+# println("The elapsed time: $elapsed seconds")
+
+N=3
+directions = Matrix{Float64}(undef, 3*N, 20)
+for i in 1:20
+    angle = 2π * i / 20  # Angle in radians
+    x_value = cos(angle)      # x = cos(angle)
+    y_value = sin(angle)      # y = sin(angle)
+    
+    dir = [0.0, 0.0, 0.0, y_value, y_value, y_value, 0.0, 0.0, 0.0]
+    #dir[end-N+1:end] .= 0.0
+    directions[:, i] = dir
+end
+
+print(directions)

@@ -8,10 +8,66 @@ using DirectSearch
 include("Base_Functions.jl")
 using .Base_Functions
 
-# include("Greens_Method.jl")
-# using .Greens_Method
+using Random
+using LinearAlgebra
 
-# include("TDM_Functions.jl")
+"""
+    CustomPoll()
+
+Return an empty CustomPoll object.
+
+CustomPoll returns directions only in the xy plane. To be used when no height changes need to be explored. (i.e. when height constraint is already being satisfied.)
+"""
+mutable struct CustomPoll{T} <: DirectSearch.AbstractPoll
+    b::Dict{T,Vector{T}}
+    i::Dict{T,Int}
+    maximal_basis::Bool
+
+    CustomPoll(;kwargs...) = CustomPoll{Float64}(;kwargs...)
+
+    function CustomPoll{T}(;basis = :maximal) where T
+        g = new()
+        g.b = Dict{T, Vector{T}}()
+        g.i = Dict{T, Int}()
+
+        if basis == :maximal
+            g.maximal_basis = true
+        elseif basis == :minimal
+            g.maximal_basis = false
+        else
+            error( "Unknown option for basis type" )
+        end
+
+        return g
+    end
+end
+
+"""
+    GenerateDirections(p::AbstractProblem, DG::LTMADS{T})::Matrix{T}
+
+Generates columns and forms a basis matrix for direction generation.
+"""
+function DirectSearch.GenerateDirections(p::DirectSearch.AbstractProblem, DG::CustomPoll{T})::Matrix{T} where T
+    # B = LT_basis_generation(p.config.mesh, p.N, DG)
+    # Dₖ = _form_basis_matrix(p.N, B, DG.maximal_basis)
+
+    N=3
+    directions = Matrix{Float64}(undef, 3*N, 20)
+    for i in 1:20
+        angle = 2π * i / 20  # Angle in radians
+        x_value = cos(angle)      # x = cos(angle)
+        y_value = sin(angle)      # y = sin(angle)
+        
+        dir = [x_value, x_value, x_value, y_value, y_value, y_value, 0.0, 0.0, 0.0]
+        #dir[end-N+1:end] .= 0.0
+        directions[:, i] = dir
+    end
+
+    return directions
+end
+
+
+
 
 
 
@@ -27,23 +83,47 @@ Optimize the problem using the Mesh Adaptive Direct Search solver
     - 'cons_ext': Extreme constraints
     - 'cons_prog': Progressive constraints
     - 'N_iter': Number of iterations
+    - 'N': Number of UAVs
 """
 function optimize(input, obj, cons_ext, cons_prog, N_iter)
 
+ 
     # Define optimization problem
+    #global p = DSProblem(length(input), poll = CustomPoll()) #if we want to use our own poll stage.
     global p = DSProblem(length(input))
     SetInitialPoint(p, input)
     SetObjective(p, obj)
     SetIterationLimit(p, N_iter)
     
-    DirectSearch.SetMinimumMeshSize(p, 1.0)
+    #DirectSearch.SetMinimumMeshSize(p, 5.0)
+    SetMaxEvals(p)
+
+    # for i in 1:length(input)
+    #     #if i < 9
+    #     SetGranularity(p, i, 0.1)
+    #     # else
+    #     #     SetGranularity(p, i, 0.1)
+    #     # end
+    # end
+
+
+    # progressive_constraint = cons_prog[1]
+    # barrier_threshold = progressive_constraint(input)
+
+    # # #Add progressive constraint
+    # progressive_collection_index = AddProgressiveCollection(p; h_max = barrier_threshold^2) #have to square this because that is how h is calculated by the MADS algorithm.
+
+
 
     # Add constraints to problem
     for i in cons_ext
         AddExtremeConstraint(p, i)
     end
     for i in cons_prog
-        AddProgressiveConstraint(p, i)
+        # progressive_constraint = i
+        # barrier_threshold = progressive_constraint(input)
+        # progressive_collection_index = AddProgressiveCollection(p; h_max = barrier_threshold^2)
+        # AddProgressiveConstraint(p, i; index = progressive_collection_index)
     end
 
 

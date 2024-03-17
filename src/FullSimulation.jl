@@ -19,19 +19,19 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 1000            #How many seconds to run for.
+tf = 1000           #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
-N=3                 #Number of UAVs.
+N = 3                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
 Nt_sim = convert(Int64, tf/dt_sim)  #Number of timesteps in simulation.
 R1 = 150.0           # (user-defined) Initial radius 
 ΔR = 5.0             # Expanding rate: 5m/update
 FOV = 80/180*π       # FOV in radians
-h_min = 1            # (user-defined) Flying altitude lower bound (exclude initialization)
+h_min = 5            # (user-defined) Flying altitude lower bound (exclude initialization)
 h_max = 20.0           # (user-defined) Flying altitude upper bound
 r_min = h_min * tan(FOV/2) # (user-defined, replaced later)
-global r_max = h_max * tan(FOV/2) * [1.0, 1.0, 1.0]
-global d_lim = 9.2 * [1.0, 1.0, 1.0]           # (user-defined) limitations on displacement of group UAV induced from optimization. 
+global r_max = h_max * tan(FOV/2) * ones(N)
+global d_lim = 9.2 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
 N_iter = 100         # (use-defined) set the limit of iterations for coverage maximization
 
 # Drone Parameters
@@ -49,6 +49,12 @@ Nt_horizon = Int(hor/dt_horizon)+1  # Number of timesteps per horizon
 R_D = 10.0          # Danger radius
 R_C = 1.0           # Collision radius
 Nm = 5              # Number of applied time-steps
+
+#Define Known Interesting region boundaries.
+x_LB = [225, 10]
+x_UB = [275, 20] 
+y_LB = [175, 10]
+y_UB = [225, 20]
 
 include("TDM_TRAJECTORY_opt.jl")
 
@@ -69,17 +75,25 @@ global points_of_interest = Vector{Vector{Float64}}()
 subarray_size = 5
 
 for i in 1:subarray_size:length(new_points)
-    push!(points_of_interest, new_points[i:min(i+subarray_size-1, end)])
+    new_point = new_points[i:min(i+subarray_size-1, end)]
+    check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
+    if any(check)
+        new_point[4] = 250.0
+    end
+    push!(points_of_interest, new_point)
 end
 
 
+
+
 #Initialise the points of interest. (for static environment)
-#global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,500.0,500.0) #Create initial set of points of interest.
+#global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,200.0,200.0) #Create initial set of points of interest.
 
 
 
-# N = 1500.0
-# x = [[N/4, N/4, 3*N/4, 3*N/4];[N/4, 3*N/4, N/4, 3*N/4];[N/2, N/2, N/2, N/2]]
+# N = 1000.0
+# x = [[N/4, N/4, 3*N/4, 3*N/4, 3*N/4, 3*N/4, N/4, N/4, 3*N/4, N/4, N/3, N/5, N/6, N/8, N/4, 3*N/4];[N/4, 3*N/4, N/4, 3*N/4, 3*N/4, 3*N/4, N/4, N/4,  3*N/4, N/4, N/3, N/5, N/8, N/6, N/4, 3*N/4];[N/2, N/2, N/2, N/2, 3*N/4, 3*N/4, N/4, N/4,  3*N/4, N/4, N/3, N/5, N/2, N/2,  N/2, N/2]]
+#x = [[N/4, N/4, 3*N/4, 3*N/4];[N/4, 3*N/4, N/4, 3*N/4];[N/2, N/2, N/2, N/2]]
 
 # Define Area maximization objective function.
 function AreaMaxObjective(x) #x is the vector of UAV locations in the form [x;y;r]
@@ -92,36 +106,56 @@ function AreaMaxObjective(x) #x is the vector of UAV locations in the form [x;y;
     violation = 0.0
     #Violations
     for i in 1:N
-        violation += max((x[i+2*N] - r_max[i]), 0.0)
+        #violation += max((x[i+2*N] - r_max[i]), 0.0) #violate only if it goes above the height limit.
+        violation += abs(x[i+2*N] - r_max[i]) #violate if UAV is not held at the max height.
     end
 
 
     #global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(objective_circles, points_of_interest)
-    return -area_covered + violation*10000
+    return -area_covered + violation*100000
 end
-
 
 #@timev AreaMaxObjective(x)
 
-#Define Known Interesting region boundaries.
-x_LB = [225, 10]
-x_UB = [275, 20] 
-y_LB = [175, 10]
-y_UB = [225, 20]
+
+function allocate_even_circles_in_a_line(separationx::Float64, separationy::Float64, N, r_uav::Float64, start_x, start_y)
+    # Generate circles
+    x_arr = Vector{Float64}(undef,0)
+    y_arr = Vector{Float64}(undef,0)
+    r_arr = Vector{Float64}(undef,0)
+
+    for i in 1:N
+        
+        x = start_x + separationx*i
+        y = start_y + separationy*i
+        r = r_uav
+
+        push!(x_arr,x)
+        push!(y_arr,y)
+        push!(r_arr,r)
+    end
+
+    return [x_arr;y_arr;r_arr]
+
+end
+
+
+
 
 # Define extreme and progressive constraints
 cons_ext = cons1
-cons_prog = []
+cons_prog = []# [cons1_progressive, cons2_progressive, cons3_progressive]
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-global STATIC_input_MADS = Base_Functions.allocate_even_circles(2.0, N, 10 * tan(FOV/2), 250.0, 250.0)#returns vector of [x;y;R] values.
+global STATIC_input_MADS = allocate_even_circles_in_a_line(20.0, 0.0, N, 10 * tan(FOV/2), 200 , 250)
+#global STATIC_input_MADS = Base_Functions.allocate_even_circles(10.0, N, 10 * tan(FOV/2), 250.0, 250.0)#returns vector of [x;y;R] values.
 ini_circles = AreaCoverageCalculation.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 
 #Initialise area maximisation placeholders.
 global circles_pool = ini_circles          # Initialize circle pool
 #global pre_optimized_circles = ini_circles # Initialize pre-optimized circles
 global pre_optimized_circles_MADS = ini_circles # Initialize pre-optimized circles
-single_input_pb = []                        # document the circles at each epoch
+single_input_pb = []                        # document the circles at each epochz
 single_output_pb = []
 
 global vels = [] # for measuring average speed of drone. ##Purely for testing purposes.
@@ -146,14 +180,14 @@ for t in 1:Nt_sim
     # end
 
     if t != 1
-        new_points = vec(sheet[t+5,:])
+        new_points = vec(sheet[t+1,:])
         filter!(!ismissing, new_points)
 
         for i in 1:subarray_size:length(new_points)
             new_point = new_points[i:min(i+subarray_size-1, end)]
             check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
             if any(check)
-                new_point[4] = 50.0
+                new_point[4] = 250.0
             end
             push!(points_of_interest, new_point)
         end
@@ -194,17 +228,17 @@ for t in 1:Nt_sim
             check = drone_locs[i] .< x_UB .&& drone_locs[i] .> x_LB  .&& drone_locs[i+N] .< y_UB .&& drone_locs[i+N] .> y_LB  
 
             if any(check)
-                #single_output[i+2*N] = 15 * tan(FOV/2) #an initial guess that won't violate constraint.
-                #global d_lim[i] = 15.0
-                global r_max[i] = 10 * tan(FOV/2)
+                
+                global r_max[i] = 15 * tan(FOV/2)
             
             else
-                #global d_lim[i] = 9.2
+               
                 global r_max[i] = h_max * tan(FOV/2)
 
             end
         end
     end
+
 
 
     # 1. Set up the input at each timestep. (using previous MADS output to warm-start)
@@ -214,7 +248,7 @@ for t in 1:Nt_sim
         global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R].
     else
         single_input = single_output
-        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons4, cons5], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
+        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons4], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
     end
     
     if STATIC_output == false

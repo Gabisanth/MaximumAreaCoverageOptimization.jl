@@ -2,6 +2,7 @@ module Base_Functions
 
 export Circle
 export allocate_even_circles
+export allocate_even_circles_in_a_line
 export plot_circle
 
 
@@ -65,7 +66,7 @@ end
 
 
 
-function allocate_even_circles_in_a_line(separationx::Float64, separationy::Float64, N, r_uav::Float64, center_x, center_y)
+function allocate_even_circles_in_a_line(separationx::Float64, separationy::Float64, N, r_uav::Float64, start_x, start_y)
     # Generate circles
     x_arr = Vector{Float64}(undef,0)
     y_arr = Vector{Float64}(undef,0)
@@ -73,8 +74,8 @@ function allocate_even_circles_in_a_line(separationx::Float64, separationy::Floa
 
     for i in 1:N
         
-        x = center_x + separationx*i
-        y = center_y + separationy*i
+        x = start_x + separationx*i
+        y = start_y + separationy*i
         r = r_uav
 
         push!(x_arr,x)
