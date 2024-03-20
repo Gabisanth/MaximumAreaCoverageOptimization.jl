@@ -19,7 +19,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 500           #How many seconds to run for.
+tf = 200           #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N = 3                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -272,11 +272,14 @@ for t in 1:Nt_sim
     #Define vector of Trajectory Problem objects. (Does this need to be done inside this time loop??)
     global MAVs = Vector{TDM_TRAJECTORY_opt.Trajectory_Problem}()
     for i in 1:N
+        V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 5.0
+        x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_pref[1], V_pref[2], V_pref[3]], zeros(3)) 
+
         push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i], r_max[i], d_lim[i], FOV))
     end
 
     #Collision Avoidance Placeholders.
-   collision = false
+   collision = true
 
     #Run Main Trajectory Optimization step.
     global velocities = []
