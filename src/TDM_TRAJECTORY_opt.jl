@@ -194,14 +194,11 @@ Performs a trajectory optimization of the MAV from StateHistory[end] (current st
     - 'Nt::Int64': Number of timesteps
     - 'collision::Vector{Any}': Vector of form [Boolean,[x,y,z]], where the Boolean value describes if a collision is imminent with any other MAVs at the location (x,y,z)
 """
-function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, collision::Vector{Any})
+function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, collision_avoidance_mode::Bool)
 
     x0 = SVector(MAV.StateHistory[end])  # initial 3D positions of MAV
     xf = SVector(MAV.TargetState)         # final 3D positions of MAV
 
-    #if x0[3] >= 20
-    #xf = [xf[1], xf[2], 5.0, xf[4], xf[5], xf[6], xf[7], xf[8], xf[9], xf[10], xf[11], xf[12], xf[13]]
-    #end
 
 
     n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4
@@ -212,17 +209,28 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     weight_R = 1.0 #1e-10 #Penalise controller effort.
     MU_exact = 100.0 #penalty factor for the soft constraint.
     MU_quadratic = 1000.0
-    
     weight_Qf = 1.0 #Penalise current state error.
-    Q = Diagonal(@SVector fill(weight_Q, num_states)) #for stage cost.
-    #Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])
-    #R = Diagonal(@SVector fill(weigth_R, num_controls)) #for stage cost.
-    R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
-    Qf = Diagonal(@SVector fill(weight_Qf, num_states)) #for terminal cost.  #xf: 0,0,0, Qf 1,1,1
-    #Qf = Diagonal(SA[weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, 0.0, 0.0, 0.0, weight_Qf, weight_Qf, weight_Qf]) #xf: 0,0,0, Qf 1,1,1
-    #objective = LQRObjective(Q, R, Qf, xf, Nt)
 
+    # Constraints
+    cons = ConstraintList(num_states, num_controls, Nt)
+    
+    if collision_avoidance_mode == false
+        Q = Diagonal(@SVector fill(weight_Q, num_states)) #for stage cost.
+        #Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])
+        #R = Diagonal(@SVector fill(weigth_R, num_controls)) #for stage cost.
+        R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
+        Qf = Diagonal(@SVector fill(weight_Qf, num_states)) #for terminal cost.  #xf: 0,0,0, Qf 1,1,1
+        #Qf = Diagonal(SA[weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, 0.0, 0.0, 0.0, weight_Qf, weight_Qf, weight_Qf]) #xf: 0,0,0, Qf 1,1,1
+        #objective = LQRObjective(Q, R, Qf, xf, Nt)
+    else
+        # #Add goal constraint.
+        # goalcon = GoalConstraint(xf, 8:10)
+        # add_constraint!(cons, goalcon, 1:Nt)  # add to the last time step
 
+        Q = Diagonal(SA[0.00000, 0.00000, 0.00000, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*5, weight_Q*5, weight_Q*5, weight_Q, weight_Q, weight_Q])
+        R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
+        Qf =Diagonal(SA[0.00000, 0.00000, 0.00000, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf*5, weight_Qf*5, weight_Qf*5, weight_Qf, weight_Qf, weight_Qf])
+    end
     ##Create own objective function. To include slack variable for soft constraint.
     #LQRObjective function in this case.
 
@@ -254,20 +262,19 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
 
 
     # Constraints
-    cons = ConstraintList(num_states, num_controls, Nt)
-    x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -3.0,-3.0,-2.0,  -1.5,-1.5,-1.5]
-    x_max = [500.0,500.0, Inf,  1.0,1.0,1.0,1.0,  3.0,3.0,2.0,  1.5,1.5,1.5] #No upper bound constraint for 'z'. Will use soft constraint for this.
+    x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -3.0,-3.0,-3.0,  -2,-2,-2]
+    x_max = [500.0,500.0, Inf,  1.0,1.0,1.0,1.0,  3.0,3.0,3.0,  2,2,2] #No upper bound constraint for 'z'. Will use soft constraint for this.
 
     u_min = [0.0, 0.0, 0.0, 0.0, 0.0]
     u_max = [10.0,10.0,10.0,10.0,Inf] #Don't need upper bound constraint for slack variable.
 
     add_constraint!(cons, BoundConstraint(num_states,num_controls, x_min=x_min, x_max=x_max, u_min = u_min, u_max=u_max), 1:Nt)
-
+;
     # Add collision constraints if present
-    if collision[1] == true
-        x,y,z = collision[2]
-        add_constraint!(cons, SphereConstraint(n, [x], [y], [z], [1.5]), 1:Nt)
-    end
+    # if collision[1] == true
+    #     x,y,z = collision[2]
+    #     add_constraint!(cons, SphereConstraint(n, [x], [y], [z], [1.5]), 1:Nt)
+    # end
 
     # #Add goal constraint.
     # goalcon = GoalConstraint(xf, 1:3)

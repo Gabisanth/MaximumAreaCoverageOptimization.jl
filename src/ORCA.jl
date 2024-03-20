@@ -1,12 +1,11 @@
-##Trial with 2 agents A and B.
-using LinearAlgebra
+module ORCA
 
+export ORCA_3D
+
+using LinearAlgebra
 using JuMP
 import Ipopt
 using LinearAlgebra
-
-using Plots
-plotly()  # Set the backend to Plotly
 
 #Input: R_A, R_B (radius of each agent), P_A, P_B (coordinates of their centres), V_A, V_B (current velocity vectors for each agent).
 R_A = 1
@@ -156,7 +155,7 @@ function ORCA_2D(R_A, R_B, P_A, P_B, V_A, V_B) #atm it only works if the relativ
 end
 
 
-function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility)
+function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility, V_pref)
 
     u_all = []
     n_all = []
@@ -246,7 +245,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility)
     @variable(model, Vx)
     @variable(model, Vy)
     @variable(model, Vz)
-    @objective(model, Min, (Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2)
+    @objective(model, Min, (Vx-V_pref[1])^2 + (Vy-V_pref[2])^2 + (Vz-V_pref[3])^2)
 
     for i in eachindex(R_B)
 
@@ -256,13 +255,14 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility)
             @constraint(model, dot([Vx Vy Vz] - V_A - responsibility*u_all[i], n_all[i]) <= 0)
         end
     end
-    @constraint(model, ((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2) <= (0.5)^2) #Physical limits included.
+    #@constraint(model, ((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2) <= (0.5)^2) #Physical limits included.
     optimize!(model)
     
 
     #Output: New Velocity Vector for A (and B).
     V_opt = [value(Vx) value(Vy) value(Vz)]
-    return V_opt
+
+    return V_opt, collision_status
 
 
     # println(n1,n2)
@@ -361,27 +361,28 @@ end
 
 #println(ORCA_3DCone(R_A, R_B, P_A, P_B, V_A, V_B, 0.5, 0.5))
 
-vAnew = (ORCA_3D(R_A, [R_B, R_C, R_D], P_A, [P_B, P_C, P_D], V_A, [V_B, V_C, V_D], 0.5))
-vBnew = (ORCA_3D(R_B, [R_A, R_C, R_D], P_B, [P_A, P_C, P_D], V_B, [V_A, V_C, V_D], 0.5))
-vCnew = (ORCA_3D(R_C, [R_A, R_B, R_D], P_C, [P_A, P_B, P_D], V_C, [V_A, V_B, V_D], 0.5))
-vDnew = (ORCA_3D(R_D, [R_A, R_B, R_C], P_D, [P_A, P_B, P_C], V_D, [V_A, V_B, V_C], 0.5))
+# vAnew = (ORCA_3D(R_A, [R_B, R_C, R_D], P_A, [P_B, P_C, P_D], V_A, [V_B, V_C, V_D], 0.5, V_A))
+# vBnew = (ORCA_3D(R_B, [R_A, R_C, R_D], P_B, [P_A, P_C, P_D], V_B, [V_A, V_C, V_D], 0.5, V_B))
+# vCnew = (ORCA_3D(R_C, [R_A, R_B, R_D], P_C, [P_A, P_B, P_D], V_C, [V_A, V_B, V_D], 0.5, V_C))
+# vDnew = (ORCA_3D(R_D, [R_A, R_B, R_C], P_D, [P_A, P_B, P_C], V_D, [V_A, V_B, V_C], 0.5, V_D))
 
 
 
-println(V_A)
-println(vAnew)
+# println(V_A)
+# println(vAnew)
 
-println(V_B)
-println(vBnew)
+# println(V_B)
+# println(vBnew)
 
-println(V_C)
-println(vCnew)
+# println(V_C)
+# println(vCnew)
 
-println(V_D)
-println(vDnew)
+# println(V_D)
+# println(vDnew)
 
-println(P_A)
-println(P_B)
-println(P_C)
-println(P_D)
+# println(P_A)
+# println(P_B)
+# println(P_C)
+# println(P_D)
 
+end

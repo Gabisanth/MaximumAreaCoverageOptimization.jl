@@ -130,11 +130,13 @@ end
 function cons1_progressive(x)
 
     violation = 0
-    i=1
-    #for i in range(1,stop=Int(length(x)/3))
-    R_val = x[N*2 + i]
-    violation += abs(R_val - r_max[i])
-    #end
+    #i=1
+    for i in range(1,stop=Int(length(x)/3))
+        R_val = x[N*2 + i]
+
+        violation += max((R_val- r_max[i]), 0.0)#abs(R_val - r_max[i])
+        #violation += abs(R_val - r_max[i])
+    end
 
     return violation
 
@@ -146,7 +148,7 @@ function cons2_progressive(x)
     i=2
     #for i in range(1,stop=Int(length(x)/3))
     R_val = x[N*2 + i]
-    violation += abs(R_val - r_max[i])
+    violation +=  max((R_val- r_max[i]), 0.0)#abs(R_val - r_max[i])
     #end
 
     return violation
@@ -159,7 +161,7 @@ function cons3_progressive(x)
     i=3
     #for i in range(1,stop=Int(length(x)/3))
     R_val = x[N*2 + i]
-    violation += abs(R_val - r_max[i])
+    violation += max((R_val- r_max[i]), 0.0)#abs(R_val - r_max[i])
     #end
 
     return violation

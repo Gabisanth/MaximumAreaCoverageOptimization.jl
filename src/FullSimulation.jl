@@ -19,7 +19,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 1000           #How many seconds to run for.
+tf = 500           #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N = 3                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -51,8 +51,8 @@ R_C = 1.0           # Collision radius
 Nm = 5              # Number of applied time-steps
 
 #Define Known Interesting region boundaries.
-x_LB = [225, 10]
-x_UB = [275, 20] 
+x_LB = [275, 10]
+x_UB = [325, 20] 
 y_LB = [175, 10]
 y_UB = [225, 20]
 
@@ -144,7 +144,7 @@ end
 
 # Define extreme and progressive constraints
 cons_ext = cons1
-cons_prog = []# [cons1_progressive, cons2_progressive, cons3_progressive]
+cons_prog = []#[cons1_progressive]
 
 #Allocate the initial circles. (i.e. UAV starting positions).
 global STATIC_input_MADS = allocate_even_circles_in_a_line(20.0, 0.0, N, 10 * tan(FOV/2), 200 , 250)
@@ -276,16 +276,13 @@ for t in 1:Nt_sim
     end
 
     #Collision Avoidance Placeholders.
-    global collision = Vector{Any}(undef,N) # Vector describing collision constraints
-    for i in 1:N
-        collision[i] = [false,[]]
-    end
+   collision = false
 
     #Run Main Trajectory Optimization step.
     global velocities = []
     for i in 1:N
         local MAV = MAVs[i]
-        output = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt_horizon,Nm,collision[i]) #Will append the next state of each UAV into their StateHistory.
+        output = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt_horizon,Nm,collision) #Will append the next state of each UAV into their StateHistory.
         push!(velocities, output[8:10])
         push!(vels, norm(output[8:10]))
         #println("X speed: ")
