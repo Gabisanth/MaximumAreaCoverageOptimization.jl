@@ -19,7 +19,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 200           #How many seconds to run for.
+tf = 50           #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N = 3                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -568,7 +568,7 @@ plot(p2, Plots.surface(X, Y, Z, size=(600,600),
 ## Plot 1(b): 3D trajectories for the all the UAVs
 for j in eachindex(Xs)                         # for each timestep
     local this_X = Xs[j]
-    for i in 1:N             # for each UAV.
+    for i in 1:N                               # for each UAV.
 
         push!(X_data, this_X[i][end,1])
         push!(Y_data, this_X[i][end,2])
@@ -680,24 +680,32 @@ plot!(p2, grid = true, gridwidth = 3,
 
 
 #6. Write data to Excel sheet for attitude and position plotting.
-data = [
-    X_data[1:N:Nt_sim],
-    Y_data[1:N:Nt_sim],
-    Z_data[1:N:Nt_sim],
-    a_data[1:N:Nt_sim],
-    b_data[1:N:Nt_sim],
-    c_data[1:N:Nt_sim],
-    d_data[1:N:Nt_sim]
-]
+for i in 1:N
+    data = [
+    X_data[i:N:Nt_sim],
+    Y_data[i:N:Nt_sim],
+    Z_data[i:N:Nt_sim],
+    a_data[i:N:Nt_sim],
+    b_data[i:N:Nt_sim],
+    c_data[i:N:Nt_sim],
+    d_data[i:N:Nt_sim]
+    ]
 
-# Specify the file path
-filename = "Quadrotor_States.xlsx"
-labels = ["x", "y", "z", "a", "b", "c", "d"] #positions and attitudes(in quartenion representation)
+    # Specify the file path
+    filename = "Quadrotor_States$i.xlsx"
+    labels = ["x", "y", "z", "a", "b", "c", "d"] #positions and attitudes(in quartenion representation)
 
-XLSX.openxlsx(filename, mode="w") do xf
-    sheet = xf[1]
-    XLSX.writetable!(sheet, data, labels, anchor_cell=XLSX.CellRef("A1"))
+    XLSX.openxlsx(filename, mode="w") do xf
+        sheet = xf[1]
+        XLSX.writetable!(sheet, data, labels, anchor_cell=XLSX.CellRef("A1"))
+    end
+
 end
+
+
+
+
+
 
 #7. Write target data to Excel Sheet.
 data = [
