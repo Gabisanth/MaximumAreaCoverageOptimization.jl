@@ -227,9 +227,9 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
         # goalcon = GoalConstraint(xf, 8:10)
         # add_constraint!(cons, goalcon, 1:Nt)  # add to the last time step
 
-        Q = Diagonal(SA[0.00000, 0.00000, 0.00000, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*5, weight_Q*5, weight_Q*5, weight_Q, weight_Q, weight_Q])
+        Q = Diagonal(SA[0, 0, 0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*5, weight_Q*5, weight_Q*5, weight_Q, weight_Q, weight_Q])
         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
-        Qf =Diagonal(SA[0.00000, 0.00000, 0.00000, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf*5, weight_Qf*5, weight_Qf*5, weight_Qf, weight_Qf, weight_Qf])
+        Qf =Diagonal(SA[0, 0, 0, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf*5, weight_Qf*5, weight_Qf*5, weight_Qf, weight_Qf, weight_Qf])
     end
     ##Create own objective function. To include slack variable for soft constraint.
     #LQRObjective function in this case.

@@ -33,23 +33,39 @@ function angle_between_vectors(v1, v2)
 end
 
 function perpendicular_vectors(vector) 
+    # #1. Original way: Rotation axis are arbitrarily chosen.
+    # # Normalize the input vector
+    # normalized_vector = normalize(vector)
+    
+    # # Unit vector along x axis
+    # unit_x = [1.0 0.0 0.0]
+    
+    # # Compute cross product of normalized vector with unit x vector
+    # cross_product = cross(vec(normalized_vector), vec(unit_x))
+    
+    # # If cross product is zero vector, use unit y vector instead
+    # if cross_product == [0.0, 0.0, 0.0]
+    #     unit_y = [0.0, 1.0, 0.0]
+    #     cross_product = cross(vec(normalized_vector), vec(unit_y))
+    # end
+    
+    # # Take cross product of normalized vector with the first cross product
+    # v1 = cross(vec(normalized_vector), vec(cross_product))
+
+    #2. Modified way: Rotation axis chosen, such that one is on the xy plane.
     # Normalize the input vector
     normalized_vector = normalize(vector)
     
-    # Unit vector along x axis
-    unit_x = [1.0 0.0 0.0]
+    # # Unit vector along z axis
+    unit_z = [0.0 0.0 1.0]
     
-    # Compute cross product of normalized vector with unit x vector
-    cross_product = cross(vec(normalized_vector), vec(unit_x))
+    # Compute cross product of normalized vector with unit z vector: gives vector on xy plane.
+    cross_product = cross(vec(normalized_vector), vec(unit_z))
     
-    # If cross product is zero vector, use unit y vector instead
-    if cross_product == [0.0, 0.0, 0.0]
-        unit_y = [0.0, 1.0, 0.0]
-        cross_product = cross(vec(normalized_vector), vec(unit_y))
-    end
     
-    # Take cross product of normalized vector with the first cross product
+    # Take cross product of normalized vector with the first cross product: gives other rotation axis.
     v1 = cross(vec(normalized_vector), vec(cross_product))
+
     
     return cross_product, v1
 end

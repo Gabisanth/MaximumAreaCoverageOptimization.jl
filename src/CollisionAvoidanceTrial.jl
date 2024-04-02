@@ -42,7 +42,7 @@ R_D = 10.0          # Danger radius
 R_C = 1.0           # Collision radius
 Nm = 5              # Number of applied time-steps
 
-radius = 0.5
+radius = 0.7
 
 
 P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3)) #velocity of exactly zero will cause issues in ORCA.
@@ -71,7 +71,7 @@ for t in 1:Nt_sim
         local_neighbours = []
         for j in 1:N
             if j != i
-                if norm(x_start[i][1:3] - x_start[j][1:3]) < 10
+                if norm(x_start[i][1:3] - x_start[j][1:3]) < 12
                     push!(local_neighbours, x_start[j])
                 end
             end
@@ -93,9 +93,6 @@ for t in 1:Nt_sim
 
         else
             collision_avoidance_mode = true
-
-
-
             #Populate the V_pref.
             V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * norm(x_start[i][8:10])
             #V_pref = reshape(x_start[i][1:3], 1,3)
