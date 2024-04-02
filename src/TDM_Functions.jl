@@ -10,7 +10,7 @@ using Random
 export show_circles
 export make_MADS
 export allocate_random_circles
-export allocate_even_circles
+#export allocate_even_circles
 export Domains_Problem
 
 mutable struct Circle
@@ -91,7 +91,7 @@ function show_coverage(circles, cir_domain, rnd, M, N)
 end
 
 
-function make_MADS(circles)::Vector{Float64}  # <-> make_circles in "Base_Functions.jl"
+function make_MADS(circles)::Vector{Float64}  #makes the array of circle coordinates and radii.
     x_ = []
     y_ = []
     r_ = []
@@ -132,28 +132,7 @@ function allocate_random_circles(cir_domain, N, r_max)
 end
 
 
-function allocate_even_circles(r_centering_cir::Float64, N, r_uav::Float64)
-    # Generate circles
-    x_arr = Vector{Float64}(undef,0)
-    y_arr = Vector{Float64}(undef,0)
-    r_arr = Vector{Float64}(undef,0)
 
-    for i in 1:N
-
-        ref_angle = 2*π/N * (i-1)
-        
-        x = r_centering_cir * cos(ref_angle)
-        y = r_centering_cir * sin(ref_angle)
-        r = r_uav
-
-        push!(x_arr,x)
-        push!(y_arr,y)
-        push!(r_arr,r)
-    end
-
-    return [x_arr;y_arr;r_arr]
-
-end
 
 
 mutable struct Domains_Problem
