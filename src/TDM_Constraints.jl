@@ -125,6 +125,30 @@ function cons7(x)
 
 end
 
+# Extreme Constraint 8: Control spacing between the UAVs.
+function cons8(x)
+    #If y coordinate is below 250, then the height should be dropped to 15m.
+    for i in 1:N
+        for j in 1:N
+            if j != i
+                hor_separation = sqrt((x[i]-x[j])^2 + (x[i+N]-x[j+N])^2)
+                if hor_separation < 15.0
+                    return false
+                end
+            end
+        end
+    end
+
+    return true
+
+end
+
+
+
+
+
+
+
 
 #Progressive Constraint 1: Limit altitude for better resolution.
 function cons1_progressive(x)

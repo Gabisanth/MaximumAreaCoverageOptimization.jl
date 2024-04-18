@@ -12,7 +12,7 @@ function createPOI(dx::Float64, dy::Float64, x_length::Float64, y_length::Float6
     
     for i in 1:x_length
         for j in 1:y_length
-            push!(points, [i-dx/2, j-dy/2, dx*dy, 1.0, false]) #[x coordinate, y coordinate, area represented, Importance level, Area Covered? (Boolean)]
+            push!(points, [i*dx-dx/2, j*dy-dy/2, dx*dy, dx*dy, false]) #[x coordinate, y coordinate, area represented, Importance level, Area Covered? (Boolean)]
         end
     end
 

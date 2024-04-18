@@ -262,8 +262,8 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
 
 
     # Constraints
-    x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -5.0,-5.0,-5.0,  -2,-2,-2]
-    x_max = [500.0,500.0, Inf,  1.0,1.0,1.0,1.0,  5.0,5.0,5.0,  2,2,2] #No upper bound constraint for 'z'. Will use soft constraint for this.
+    x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -5.0,-5.0,-5.0,  -20,-20,-20]
+    x_max = [500.0,500.0, Inf,  1.0,1.0,1.0,1.0,  5.0,5.0,5.0,  20,20,20] #No upper bound constraint for 'z'. Will use soft constraint for this.
 
     u_min = [0.0, 0.0, 0.0, 0.0, 0.0]
     u_max = [10.0,10.0,10.0,10.0,Inf] #Don't need upper bound constraint for slack variable.

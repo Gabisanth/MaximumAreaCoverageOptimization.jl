@@ -19,7 +19,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 50           #How many seconds to run for.
+tf = 2000           #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N = 3                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -28,10 +28,10 @@ R1 = 150.0           # (user-defined) Initial radius
 ΔR = 5.0             # Expanding rate: 5m/update
 FOV = 80/180*π       # FOV in radians
 h_min = 5            # (user-defined) Flying altitude lower bound (exclude initialization)
-h_max = 20.0           # (user-defined) Flying altitude upper bound
+h_max = 30.0           # (user-defined) Flying altitude upper bound
 r_min = h_min * tan(FOV/2) # (user-defined, replaced later)
 global r_max = h_max * tan(FOV/2) * ones(N)
-global d_lim = 9.2 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
+global d_lim = 15 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
 N_iter = 100         # (use-defined) set the limit of iterations for coverage maximization
 
 # Drone Parameters
@@ -39,8 +39,8 @@ mass = 0.5                                       # mass of quadrotor
 J = Diagonal(@SVector[0.0023, 0.0023, 0.004])    # inertia matrix                    
 gravity = SVector(0,0,-9.81)                     # gravity vector
 motor_dist = 0.1750                              # distance between motors
-kf = 1.0                                         # motor force constant (motor force = kf*u)
-km = 0.0245                                      # motor torque constant (motor torque = km*u)
+kf = 5.0                                         # motor force constant (motor force = kf*u)
+km = 0.245                                      # motor torque constant (motor torque = km*u)
 
 #Receding Horizon control parameters.
 hor = 3.0          # Prediction horizon length
@@ -87,7 +87,7 @@ end
 
 
 #Initialise the points of interest. (for static environment)
-#global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,200.0,200.0) #Create initial set of points of interest.
+#global points_of_interest = AreaCoverageCalculation.createPOI(5.0,5.0,100.0,100.0) #Create initial set of points of interest.
 
 
 
@@ -229,13 +229,33 @@ for t in 1:Nt_sim
 
             if any(check)
                 
-                global r_max[i] = 15 * tan(FOV/2)
+                global r_max[i] = 10 * tan(FOV/2)
             
             else
                
                 global r_max[i] = h_max * tan(FOV/2)
 
             end
+        end
+    end
+
+
+    if t != 1
+        for i in 1:N
+            if abs(10 - drone_locs[i+2N] / tan(FOV/2)) < 0.5
+                check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2)
+                if any(check)
+                
+                    global r_max[i] = 10 * tan(FOV/2)
+                
+                else
+                   
+                    global r_max[i] = h_max * tan(FOV/2)
+    
+                end
+            end
+
+
         end
     end
 
@@ -248,7 +268,7 @@ for t in 1:Nt_sim
         global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R].
     else
         single_input = single_output
-        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons4], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
+        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons4, cons8], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
     end
     
     if STATIC_output == false
