@@ -19,7 +19,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 2000           #How many seconds to run for.
+tf = 100           #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N = 3                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -51,10 +51,10 @@ R_C = 1.0           # Collision radius
 Nm = 5              # Number of applied time-steps
 
 #Define Known Interesting region boundaries.
-x_LB = [275, 10]
-x_UB = [325, 20] 
-y_LB = [175, 10]
-y_UB = [225, 20]
+x_LB = [225]
+x_UB = [275] 
+y_LB = [100]
+y_UB = [150]
 
 include("TDM_TRAJECTORY_opt.jl")
 
@@ -112,7 +112,7 @@ function AreaMaxObjective(x) #x is the vector of UAV locations in the form [x;y;
 
 
     #global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(objective_circles, points_of_interest)
-    return -area_covered + violation*100000
+    return -area_covered + violation*1e10
 end
 
 #@timev AreaMaxObjective(x)
@@ -202,30 +202,10 @@ for t in 1:Nt_sim
     global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(drone_locs, points_of_interest)
 
 
-    #To set new height limit in certain regions for improved resolution. By changing the height constraint.
-    # if t != 1
-    #     for i in 1:N
-    #         if single_output[i+N] < 220 && single_output[i+N] > 180 && single_output[i] < 220 && single_output[i] > 180 
-    #             #single_output[i+2*N] = 15 * tan(FOV/2) #an initial guess that won't violate constraint.
-    #             #global d_lim[i] = 15.0
-    #             global r_max[i] = 10 * tan(FOV/2)
-    
-    #             # #Temporary fix. Needs to be resolved by creating r_max term for each drone. Possibly d_lim for each too.
-    #             # single_output[1+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
-    #             # single_output[2+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
-    #             # single_output[3+2*N] = 19 * tan(FOV/2) #an initial guess that won't violate constraint.
-            
-    #         else
-    #             #global d_lim[i] = 9.2
-    #             global r_max[i] = h_max * tan(FOV/2)
-
-    #         end
-    #     end
-    # end
-
     if t != 1
         for i in 1:N
-            check = drone_locs[i] .< x_UB .&& drone_locs[i] .> x_LB  .&& drone_locs[i+N] .< y_UB .&& drone_locs[i+N] .> y_LB  
+            #check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2) 
+            check = drone_locs[i] .< x_UB .&& drone_locs[i] .> x_LB  .&& drone_locs[i+N] .< y_UB .&& drone_locs[i+N] .> y_LB
 
             if any(check)
                 
@@ -242,7 +222,7 @@ for t in 1:Nt_sim
 
     if t != 1
         for i in 1:N
-            if abs(10 - drone_locs[i+2N] / tan(FOV/2)) < 0.5
+            if abs(h_max - drone_locs[i+2N] / tan(FOV/2)) > 0.5
                 check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2)
                 if any(check)
                 
@@ -268,7 +248,7 @@ for t in 1:Nt_sim
         global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R].
     else
         single_input = single_output
-        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons4, cons8], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
+        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
     end
     
     if STATIC_output == false
@@ -292,7 +272,7 @@ for t in 1:Nt_sim
     #Define vector of Trajectory Problem objects. (Does this need to be done inside this time loop??)
     global MAVs = Vector{TDM_TRAJECTORY_opt.Trajectory_Problem}()
     for i in 1:N
-        V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 5.0
+        V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 1.5
         x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_pref[1], V_pref[2], V_pref[3]], zeros(3)) 
 
         push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i], r_max[i], d_lim[i], FOV))
@@ -414,7 +394,7 @@ for j in 1:N
     plot!(p1, all_center_x[j], all_center_y[j], legend = false, color=this_color)
 
 
-    for i in 1:50:length(single_input_pb)
+    for i in 1:5:length(single_input_pb)
         Base_Functions.plot_circle(all_center_x[j][i], all_center_y[j][i], all_center_R[j][i], p1, this_color)
     end
 
@@ -701,7 +681,7 @@ plot!(p2, grid = true, gridwidth = 3,
 
 #6. Write data to Excel sheet for attitude and position plotting.
 for i in 1:N
-    data = [
+    local data = [
     X_data[i:N:Nt_sim],
     Y_data[i:N:Nt_sim],
     Z_data[i:N:Nt_sim],
@@ -712,8 +692,8 @@ for i in 1:N
     ]
 
     # Specify the file path
-    filename = "Quadrotor_States$i.xlsx"
-    labels = ["x", "y", "z", "a", "b", "c", "d"] #positions and attitudes(in quartenion representation)
+    local filename = "Quadrotor_States$i.xlsx"
+    local labels = ["x", "y", "z", "a", "b", "c", "d"] #positions and attitudes(in quartenion representation)
 
     XLSX.openxlsx(filename, mode="w") do xf
         sheet = xf[1]

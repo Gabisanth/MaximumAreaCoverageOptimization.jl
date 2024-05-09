@@ -196,12 +196,137 @@ Performs a trajectory optimization of the MAV from StateHistory[end] (current st
 """
 function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, collision_avoidance_mode::Bool)
 
+#     x0 = SVector(MAV.StateHistory[end])  # initial 3D positions of MAV
+#     xf = SVector(MAV.TargetState)         # final 3D positions of MAV
+
+#     n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4
+#     num_states = n
+#     num_controls = m#Add slack control variable for max_height soft constraint.
+#     weight_Q = 1.0 #1e-10 #Penalise the sum of state errors in the states.
+#     weight_R = 1.0 #1e-10 #Penalise controller effort.
+#     MU_exact = 100.0 #penalty factor for the soft constraint.
+#     MU_quadratic = 1000.0
+#     weight_Qf = 1.0 #Penalise current state error.
+
+#     # Constraints
+#     cons = ConstraintList(num_states, num_controls, Nt)
+    
+#     if collision_avoidance_mode == false
+#         Q = Diagonal(@SVector fill(weight_Q, num_states)) #for stage cost.
+
+#         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
+#         Qf = Diagonal(@SVector fill(weight_Qf, num_states)) #for terminal cost.  #xf: 0,0,0, Qf 1,1,1
+
+#     else
+
+
+#         Q = Diagonal(SA[0, 0, 0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*5, weight_Q*5, weight_Q*5, weight_Q, weight_Q, weight_Q])
+#         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
+#         Qf =Diagonal(SA[0, 0, 0, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf*5, weight_Qf*5, weight_Qf*5, weight_Qf, weight_Qf, weight_Qf])
+#     end
+
+#     ##Create own objective function. To include slack variable for soft constraint.
+#     #LQRObjective function in this case.
+
+#     uf=@SVector zeros(size(R,1))
+#     @assert size(Q,1) == length(xf)
+#     @assert size(Qf,1) == length(xf)
+#     @assert size(R,1) == length(uf)
+#     n = size(Q,1) #number of states.
+#     m = size(R,1) #number of controls.
+#     H = SizedMatrix{m,n}(zeros(m,n))
+#     q = -Q*xf
+#     r = -R*uf
+#     c_ = 0.5*xf'*Q*xf + 0.5*uf'R*uf
+#     qf = -Qf*xf
+#     cf = 0.5*xf'*Qf*xf
+
+#     ℓ = QuadraticCost(Q, R, H, q, r, c_, checks=true) 
+#     ℓN = QuadraticCost(Qf, R, H, qf, r, cf, checks=false, terminal=true)
+    
+#     Q = Diagonal(@SVector fill(0.0, num_states))
+#     R = Diagonal(@SVector fill(0.01, num_controls))
+#     H = SizedMatrix{m,n}(zeros(m,n))
+#     q = zeros(SVector{13})
+#     r = SVector(0.0, 0.0, 0.0, 0.0, MU_exact)
+#     c = 0.0
+#     objective_stage = QuadraticCost(Q,R,H,q,r,c, checks = true) + ℓ
+
+#     objective = Objective(objective_stage, ℓN, Nt)
+
+
+#     # Constraints
+#     x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -5.0,-5.0,-5.0,  -20,-20,-20]
+#     x_max = [500.0,500.0, Inf,  1.0,1.0,1.0,1.0,  5.0,5.0,5.0,  20,20,20] #No upper bound constraint for 'z'. Will use soft constraint for this.
+
+#     u_min = [0.0, 0.0, 0.0, 0.0, 0.0]
+#     u_max = [10.0,10.0,10.0,10.0,Inf] #Don't need upper bound constraint for slack variable.
+
+#     add_constraint!(cons, BoundConstraint(num_states,num_controls, x_min=x_min, x_max=x_max, u_min = u_min, u_max=u_max), 1:Nt)
+# ;
+
+#     #Add soft constraint.
+#     add_constraint!(cons, SoftCon(num_states, num_controls, MAV.r_max / tan(MAV.FOV/2) ), 1:Nt)
+
+    
+
+
+#     # With random initial positions (with x0=x0)
+#     prob = Problem(MAV.Model, objective, x0, tf, xf = xf, constraints=cons)
+
+#     # State initialization: linear trajectory from start to end
+#     state_guess = zeros(Float64, (num_states,Nt))
+#     # Control initialization: hover
+#     control_guess = zeros(Float64, (num_controls,Nt))
+#     hover = zeros(MAV.Model)[2]
+
+#     for i in 1:Nt
+#         state_guess[:,i] = x0 + (i-1)*(xf-x0)/(Nt-1)   # assume linear interpolation; this is the initial trajectory plan.
+#         control_guess[:,i] = hover                     # 13 * number of (timesteps-1)
+#     end
+
+#     initial_states!(prob, state_guess)
+
+    
+#     altro = ALTROSolver(prob)
+
+#     altro = ALTROSolver(prob,show_summary=false, verbose = 0);
+
+#     #output_log = altro.stats
+
+#     solve!(altro);
+#     X = states(altro);
+
+#     MAV.PredictedStates = X
+
+#     push!(MAV.StateHistory, X[2]) # We apply the next suggested control input, so we want the next state after this control input has been applied.
+#     return X[2] #returns all states at next timestep.
+
+
+
+
+
+    ####ALTERNATIVE VERSION:
+    x0 = SVector(MAV.StateHistory[end])  # initial 3D positions of MAV
+    xf = SVector(MAV.TargetState)         # final 3D positions of MAV(CONSTANT along the horizon)
+
+
+    n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4
+    num_states = n
+    num_controls = m#Add slack control variable for max_height soft constraint.
+    # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
+    weight_Q = 1.0 #1e-10
+    weight_R = 1.0 #1e-10
+    weight_Qf = 1.0
+
+
+
+
     x0 = SVector(MAV.StateHistory[end])  # initial 3D positions of MAV
     xf = SVector(MAV.TargetState)         # final 3D positions of MAV
 
 
-
-    n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4
+    n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4 (+1 slack variable.)
     num_states = n
     num_controls = m#Add slack control variable for max_height soft constraint.
     # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
@@ -214,23 +339,24 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # Constraints
     cons = ConstraintList(num_states, num_controls, Nt)
     
+    
+    # #Add goal constraint.
+    # goalcon = GoalConstraint(xf, 8:10)
+    # add_constraint!(cons, goalcon, 1:Nt)  # add to the last time step
+
     if collision_avoidance_mode == false
-        Q = Diagonal(@SVector fill(weight_Q, num_states)) #for stage cost.
-        #Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])
-        #R = Diagonal(@SVector fill(weigth_R, num_controls)) #for stage cost.
+        Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])
         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
         Qf = Diagonal(@SVector fill(weight_Qf, num_states)) #for terminal cost.  #xf: 0,0,0, Qf 1,1,1
         #Qf = Diagonal(SA[weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, 0.0, 0.0, 0.0, weight_Qf, weight_Qf, weight_Qf]) #xf: 0,0,0, Qf 1,1,1
         #objective = LQRObjective(Q, R, Qf, xf, Nt)
     else
-        # #Add goal constraint.
-        # goalcon = GoalConstraint(xf, 8:10)
-        # add_constraint!(cons, goalcon, 1:Nt)  # add to the last time step
 
         Q = Diagonal(SA[0, 0, 0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*5, weight_Q*5, weight_Q*5, weight_Q, weight_Q, weight_Q])
         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
         Qf =Diagonal(SA[0, 0, 0, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf*5, weight_Qf*5, weight_Qf*5, weight_Qf, weight_Qf, weight_Qf])
     end
+    
     ##Create own objective function. To include slack variable for soft constraint.
     #LQRObjective function in this case.
 
@@ -261,71 +387,61 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     objective = Objective(objective_stage, ℓN, Nt)
 
 
+
+
     # Constraints
-    x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -5.0,-5.0,-5.0,  -20,-20,-20]
-    x_max = [500.0,500.0, Inf,  1.0,1.0,1.0,1.0,  5.0,5.0,5.0,  20,20,20] #No upper bound constraint for 'z'. Will use soft constraint for this.
+    cons = ConstraintList(n, m, Nt)
+    x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -5.0,-5.0,-5.0,  -10,-10,-10]
+    x_max = [500.0,500.0,Inf,  1.0,1.0,1.0,1.0,  5.0,5.0,5.0,  10,10,10]
 
     u_min = [0.0, 0.0, 0.0, 0.0, 0.0]
     u_max = [10.0,10.0,10.0,10.0,Inf] #Don't need upper bound constraint for slack variable.
 
     add_constraint!(cons, BoundConstraint(num_states,num_controls, x_min=x_min, x_max=x_max, u_min = u_min, u_max=u_max), 1:Nt)
-;
-    # Add collision constraints if present
-    # if collision[1] == true
-    #     x,y,z = collision[2]
-    #     add_constraint!(cons, SphereConstraint(n, [x], [y], [z], [1.5]), 1:Nt)
-    # end
-
-    # #Add goal constraint.
-    # goalcon = GoalConstraint(xf, 1:3)
-    # add_constraint!(cons, goalcon, Nt)  # add to the last time step
 
     #Add soft constraint.
     add_constraint!(cons, SoftCon(num_states, num_controls, MAV.r_max / tan(MAV.FOV/2) ), 1:Nt)
 
-    
-
+   
 
     # With random initial positions (with x0=x0)
     prob = Problem(MAV.Model, objective, x0, tf, xf = xf, constraints=cons)
 
+
     # State initialization: linear trajectory from start to end
-    state_guess = zeros(Float64, (num_states,Nt))
     # Control initialization: hover
-    control_guess = zeros(Float64, (num_controls,Nt))
+    state_guess = zeros(Float64, (n,Nt))
+    control_guess = zeros(Float64, (m,Nt-1))
+
     hover = zeros(MAV.Model)[2]
 
-    for i in 1:Nt
-        state_guess[:,i] = x0 + (i-1)*(xf-x0)/(Nt-1)   # assume linear interpolation; this is the initial trajectory plan.
+    for i in 1:Nt-1
+        state_guess[:,i] = x0 + (xf-x0)*(i-1)/(Nt-1)   # assume linear interpolation
         control_guess[:,i] = hover                     # 13 * number of (timesteps-1)
     end
 
-    #state_guess[:,Nt] = xf                             # 13 * number of timesteps
+    state_guess[:,Nt] = xf                             # 13 * number of timesteps
 
     initial_states!(prob, state_guess)
-    #initial_controls!(prob, control_guess)
+    initial_controls!(prob, control_guess)
     
-    altro = ALTROSolver(prob)
+    # altro = ALTROSolver(prob)
 
-    altro = ALTROSolver(prob,show_summary=false, verbose = 0);
-
-    #output_log = altro.stats
-
-
+    altro = ALTROSolver(prob,show_summary=false);
 
     solve!(altro);
 
     X = states(altro);
-    #U = controls(altro);
 
     MAV.PredictedStates = X
 
-    # for i in 2:Nm
-    #     push!(MAV.StateHistory, X[i])
-    # end
+    for i in 2:Nm
+        push!(MAV.StateHistory, X[i])
+    end
 
-    push!(MAV.StateHistory, X[2]) # We apply the next suggested control input, so we want the next state after this control input has been applied.
-    return X[2] #returns all states at next timestep.
+    return X[2]
+
+
 end
 
 
