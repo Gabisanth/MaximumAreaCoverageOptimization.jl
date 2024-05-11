@@ -59,15 +59,17 @@ function perpendicular_vectors(vector)
     # # Unit vector along z axis
     unit_z = [0.0 0.0 1.0]
     
-    # Compute cross product of normalized vector with unit z vector: gives vector on xy plane.
-    cross_product = cross(vec(normalized_vector), vec(unit_z))
+    # Compute cross product of normalized vector with unit z vector: gives vector on xy plane, perpendicular to position vector of obstacle.
+    #Vertical/elevation rotations about this axis.
+    axis1 = cross(vec(normalized_vector), vec(unit_z))
     
     
-    # Take cross product of normalized vector with the first cross product: gives other rotation axis.
-    v1 = cross(vec(normalized_vector), vec(cross_product))
+    # Take cross product of normalized vector with the first cross product: gives vector perpendicular to position vector of obstacle.
+    #Horizontal/ azimuthal rotations about this axis.
+    axis2 = cross(vec(normalized_vector), vec(axis1))
 
     
-    return cross_product, v1
+    return axis1, axis2
 end
 
 
@@ -171,7 +173,7 @@ function ORCA_2D(R_A, R_B, P_A, P_B, V_A, V_B) #atm it only works if the relativ
 end
 
 
-function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility, V_pref)
+function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility_shares, V_pref)
 
     u_all = []
     n_all = []
@@ -188,8 +190,13 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility, V_pref)
         #Need 2 sets of edges to (approximate) the cone. (actually will be a square based pyramid instead of a cone).
         axis1, axis2 = perpendicular_vectors(centre)
 
-        cone_edge_1 = rotate_about_arbitrary_axis(centre, axis1, cone_angle*pi/180)
-        cone_edge_2 = rotate_about_arbitrary_axis(centre, axis1, -cone_angle*pi/180)
+        if R_B[i] != 0.5 #i.e. it is not another drone. Will use this to distinguish static obstacles from our cooperative drones.
+            cone_edge_1 = rotate_about_arbitrary_axis(centre, axis1, 90*pi/180)
+            cone_edge_2 = rotate_about_arbitrary_axis(centre, axis1, -90*pi/180)
+        else
+            cone_edge_1 = rotate_about_arbitrary_axis(centre, axis1, cone_angle*pi/180)
+            cone_edge_2 = rotate_about_arbitrary_axis(centre, axis1, -cone_angle*pi/180)
+        end
 
         cone_edge_3 = rotate_about_arbitrary_axis(centre, axis2, cone_angle*pi/180)
         cone_edge_4 = rotate_about_arbitrary_axis(centre, axis2, -cone_angle*pi/180)
@@ -254,6 +261,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility, V_pref)
 
     end
   
+    print(collision_status)
 
     #Perform the optimization for velocity of A (and B).
     model = Model(Ipopt.Optimizer)
@@ -261,17 +269,19 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility, V_pref)
     @variable(model, Vx)
     @variable(model, Vy)
     @variable(model, Vz)
-    @objective(model, Min, (Vx-V_pref[1])^2 + (Vy-V_pref[2])^2 + (Vz-V_pref[3])^2)
+    @objective(model, Min, (Vx-V_pref[1])^2 + (Vy-V_pref[2])^2 + (Vz-V_pref[3])^2 + 3*((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2))
 
     for i in eachindex(R_B)
+        #@constraint(model, dot([Vx Vy Vz] - V_A - responsibility_shares[i]*u_all[i], n_all[i]) >= 0)
 
         if collision_status[i]
-            @constraint(model, dot([Vx Vy Vz] - V_A - responsibility*u_all[i], n_all[i]) >= 0)
+            @constraint(model, dot([Vx Vy Vz] - V_A - responsibility_shares[i]*(u_all[i]), n_all[i])  >= 0) #can add extra margin to keep it out.
         else
-            @constraint(model, dot([Vx Vy Vz] - V_A - responsibility*u_all[i], n_all[i]) <= 0)
+            @constraint(model, dot([Vx Vy Vz] - V_A - responsibility_shares[i]*(u_all[i]), n_all[i]) <= 0) #can add extra margin to keep it out.
         end
     end
     #@constraint(model, ((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2) <= (0.5)^2) #Physical limits included.
+
     optimize!(model)
     
 

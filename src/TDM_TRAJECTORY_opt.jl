@@ -311,21 +311,6 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     xf = SVector(MAV.TargetState)         # final 3D positions of MAV(CONSTANT along the horizon)
 
 
-    n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4
-    num_states = n
-    num_controls = m#Add slack control variable for max_height soft constraint.
-    # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
-    weight_Q = 1.0 #1e-10
-    weight_R = 1.0 #1e-10
-    weight_Qf = 1.0
-
-
-
-
-    x0 = SVector(MAV.StateHistory[end])  # initial 3D positions of MAV
-    xf = SVector(MAV.TargetState)         # final 3D positions of MAV
-
-
     n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4 (+1 slack variable.)
     num_states = n
     num_controls = m#Add slack control variable for max_height soft constraint.
@@ -348,8 +333,6 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
         Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])
         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
         Qf = Diagonal(@SVector fill(weight_Qf, num_states)) #for terminal cost.  #xf: 0,0,0, Qf 1,1,1
-        #Qf = Diagonal(SA[weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf, 0.0, 0.0, 0.0, weight_Qf, weight_Qf, weight_Qf]) #xf: 0,0,0, Qf 1,1,1
-        #objective = LQRObjective(Q, R, Qf, xf, Nt)
     else
 
         Q = Diagonal(SA[0, 0, 0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*5, weight_Q*5, weight_Q*5, weight_Q, weight_Q, weight_Q])

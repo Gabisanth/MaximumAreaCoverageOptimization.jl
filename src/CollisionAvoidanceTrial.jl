@@ -11,7 +11,7 @@ plotlyjs() #offers better interactivity than GR.
 
 
 # Simulation Parameters.
-tf = 15           #How many seconds to run for.
+tf = 20          #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N = 4                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -35,16 +35,30 @@ kf = 1.0                                         # motor force constant (motor f
 km = 0.0245                                      # motor torque constant (motor torque = km*u)
 
 #Receding Horizon control parameters.
-hor = 2.0          # Prediction horizon length
+hor = 3.0          # Prediction horizon length
 dt_horizon = dt_sim           # Time-step length per horizon
 Nt_horizon = Int(hor/dt_horizon)+1  # Number of timesteps per horizon
 R_D = 10.0          # Danger radius
 R_C = 1.0           # Collision radius
 Nm = 5              # Number of applied time-steps
 
-radius = 0.7
+radius = 0.5
 
 
+# #Single UAV with static obstacle.
+# P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0], zeros(3)) #velocity of exactly zero will cause issues in ORCA.
+
+# G_A = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+
+# global x_start = [P_A]
+# global x_final = [G_A]
+
+# #Define static obstacle.
+# R_static_obs = 5
+# pos_static_obs = [10,10] #x,y location of static obstacle.
+
+
+#Multiple moving UAVs.
 P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3)) #velocity of exactly zero will cause issues in ORCA.
 P_B = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
 P_C = RBState([10.0, 20.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
@@ -55,36 +69,67 @@ G_B = P_A
 G_C = P_D
 G_D = P_C
 
-
 global x_start = [P_A, P_B, P_C, P_D]
 global x_final = [G_A, G_B, G_C, G_D]
 
+#Define static obstacle.
+R_static_obs = 5
+pos_static_obs = [100,100] #x,y location of static obstacle.
+
+
+
+
 global Xs = []
+
 
 for t in 1:Nt_sim
     println("Timestep $t")
     #println(norm(x_start[1][1:3] - x_start[2][1:3]))
 
     neighbours = []
+    neighbours_radii = []
+    responsibility_shares = []
 
     for i in 1:N
         local_neighbours = []
+        local_neighbours_radii = []
+        local_responsibility_shares = []
         for j in 1:N
             if j != i
-                if norm(x_start[i][1:3] - x_start[j][1:3]) < 12
+                if norm(x_start[i][1:3] - x_start[j][1:3]) < 10
                     push!(local_neighbours, x_start[j])
+                    push!(local_neighbours_radii, radius)
+                    push!(local_responsibility_shares, 0.5)
+
                 end
             end
         end
+
+        if norm(x_start[i][1:2] - pos_static_obs[1:2]) < 10
+            static_obs = RBState([pos_static_obs[1], pos_static_obs[2], x_start[i][3]], UnitQuaternion(I), [0.0, 0.0, 0.0], zeros(3))
+            push!(local_neighbours, static_obs)
+            push!(local_neighbours_radii, R_static_obs)
+            push!(local_responsibility_shares, 1) #Drone needs to take full responsibility in avoiding static obstacles.
+        end
+
         push!(neighbours, local_neighbours)
+        push!(neighbours_radii, local_neighbours_radii)
+        push!(responsibility_shares, local_responsibility_shares)
     end
 
     global MAVs = Vector{TDM_TRAJECTORY_opt.Trajectory_Problem}()
 
     for i in 1:N
         if isempty(neighbours[i])
-            collision_avoidance_mode = false
+            collision_avoidance_mode = true
 
+            if t == 1
+                V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 1.8
+            else
+                V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * norm(x_start[i][8:10])
+            end
+
+            x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_pref[1], V_pref[2], V_pref[3]], zeros(3)) 
             push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i], r_max[i], d_lim[i], FOV))
 
             local MAV = MAVs[i]
@@ -106,8 +151,8 @@ for t in 1:Nt_sim
             end
 
         
-            V_optimal, collision_status = ORCA.ORCA_3D(radius, fill(radius, length(neighbours[i])), reshape(x_start[i][1:3], 1,3), P_Bs, reshape(x_start[i][8:10],1,3), V_Bs, 0.5, V_pref)
-
+            V_optimal, collision_status = ORCA.ORCA_3D(radius, neighbours_radii[i], reshape(x_start[i][1:3], 1,3), P_Bs, reshape(x_start[i][8:10],1,3), V_Bs, responsibility_shares[i], V_pref)
+            #println((V_optimal))
 
             #Carry out Trajectory Optimization.
             x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_optimal[1], V_optimal[2], V_optimal[3]], zeros(3)) 
@@ -314,12 +359,27 @@ plot!(p2, grid = true, gridwidth = 3,
 
 
 
+using XLSX
 
+#6. Write data to Excel sheet for attitude and position plotting.
+for i in 1:N
+    local data = [
+    X_data[i:N:Nt_sim],
+    Y_data[i:N:Nt_sim],
+    Z_data[i:N:Nt_sim],
+    a_data[i:N:Nt_sim],
+    b_data[i:N:Nt_sim],
+    c_data[i:N:Nt_sim],
+    d_data[i:N:Nt_sim]
+    ]
 
+    # Specify the file path
+    local filename = "Quadrotor_States$i.xlsx"
+    local labels = ["x", "y", "z", "a", "b", "c", "d"] #positions and attitudes(in quartenion representation)
 
-# V_A = [1.0 0.0 0.0] + reshape(rand(-0.001:0.0000001:0.001, 3), 1, 3)
-# V_B = [-1.0 0.0 0.0] + reshape(rand(-0.001:0.0000001:0.001, 3), 1, 3)
+    XLSX.openxlsx(filename, mode="w") do xf
+        sheet = xf[1]
+        XLSX.writetable!(sheet, data, labels, anchor_cell=XLSX.CellRef("A1"))
+    end
 
-
-# vAnew = (ORCA.ORCA_3D(R_A, [R_B], P_A[1:3], [P_B[1:3]], V_A, [V_B], 0.5, V_A))
-# vBnew = (ORCA.ORCA_3D(R_B, [R_A], P_B[1:3], [P_A[1:3]], V_B, [V_A], 0.5, V_B))
+end
