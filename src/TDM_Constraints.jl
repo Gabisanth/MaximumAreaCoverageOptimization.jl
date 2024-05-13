@@ -62,6 +62,8 @@ function cons4(x)
         #Velocity vector of target i.
         Target_vel = [x[i] - single_output[i], x[i+N] - single_output[i+N]]#, x[i+2*N] - single_output[i+2*N]]
 
+        #Target_vel = [x[i] - STATIC_input_MADS[i], x[i+N] - STATIC_input_MADS[i+N]]
+
         #Compute Angle between the two vectors.
         angle = abs(acosd(round(dot(UAV_vel, Target_vel)/ (norm(UAV_vel) * norm(Target_vel)))))
 

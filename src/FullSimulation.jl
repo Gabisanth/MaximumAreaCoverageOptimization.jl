@@ -19,7 +19,7 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 100           #How many seconds to run for.
+tf = 60           #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N = 3                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
@@ -87,7 +87,7 @@ end
 
 
 #Initialise the points of interest. (for static environment)
-#global points_of_interest = AreaCoverageCalculation.createPOI(5.0,5.0,100.0,100.0) #Create initial set of points of interest.
+#global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,500.0,500.0) #Create initial set of points of interest.
 
 
 
@@ -161,6 +161,10 @@ single_output_pb = []
 global vels = [] # for measuring average speed of drone. ##Purely for testing purposes.
 
 global target_location_memory = [[0.0], [0.0]] #For recording target location from [t-2, t-1]. For calculating previous target velocity.
+
+
+global runtime_data_MADS = []
+
 ##Main Simulation Loop over time.
 for t in 1:Nt_sim
     println("Starting iteration $t")
@@ -168,16 +172,6 @@ for t in 1:Nt_sim
     if t != 1
         target_location_memory[1] = single_output
     end
-
-    #Add new points of interest. (except for the initial timestep)
-    # if t != 1
-    #     new_points = vec(sheet[t+5,:])
-    #     filter!(!ismissing, new_points)
-
-    #     for i in 1:subarray_size:length(new_points)
-    #         push!(points_of_interest, new_points[i:min(i+subarray_size-1, end)])
-    #     end
-    # end
 
     if t != 1
         new_points = vec(sheet[t+1,:])
@@ -222,7 +216,7 @@ for t in 1:Nt_sim
 
     if t != 1
         for i in 1:N
-            if abs(h_max - drone_locs[i+2N] / tan(FOV/2)) > 0.5
+            if abs(10 - drone_locs[i+2N] / tan(FOV/2)) < 0.5
                 check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2)
                 if any(check)
                 
@@ -243,14 +237,16 @@ for t in 1:Nt_sim
 
     # 1. Set up the input at each timestep. (using previous MADS output to warm-start)
     # 2. Main area coverage optimization function.
-    if t == 1 || t == 2
+    if t < 3
         single_input = drone_locs
-        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R].
+        global STATIC_output, runtime = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R].
     else
         single_input = single_output
-        global STATIC_output = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
+        global STATIC_output, runtime = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons4], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
     end
     
+    push!(runtime_data_MADS, runtime)
+
     if STATIC_output == false
         println("The problem cannot be well solved s.t. all constraints")
         break
@@ -272,7 +268,7 @@ for t in 1:Nt_sim
     #Define vector of Trajectory Problem objects. (Does this need to be done inside this time loop??)
     global MAVs = Vector{TDM_TRAJECTORY_opt.Trajectory_Problem}()
     for i in 1:N
-        V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 1.5
+        V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 2
         x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_pref[1], V_pref[2], V_pref[3]], zeros(3)) 
 
         push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i], r_max[i], d_lim[i], FOV))
@@ -352,7 +348,7 @@ for t in 1:Nt_sim
 end
 
 
-println(sum(vels)/length(vels))
+#println(sum(vels)/length(vels))
 
 #println(length(points_of_interest))
 
@@ -703,10 +699,6 @@ for i in 1:N
 end
 
 
-
-
-
-
 #7. Write target data to Excel Sheet.
 data = [
     x_target,
@@ -725,8 +717,14 @@ end
 
 
 
+#7. Write MADS runtime data to Excel file.
+filename = "MADS_Runtime.xlsx"
+labels = ["MADS Runtime"] #positions
+data = [runtime_data_MADS]
 
-
-
+XLSX.openxlsx(filename, mode="w") do xf
+    sheet = xf[1]
+    XLSX.writetable!(sheet, data , labels, anchor_cell=XLSX.CellRef("A1"))
+end
 
 

@@ -190,7 +190,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility_shares, V_pref)
         #Need 2 sets of edges to (approximate) the cone. (actually will be a square based pyramid instead of a cone).
         axis1, axis2 = perpendicular_vectors(centre)
 
-        if R_B[i] != 0.5 #i.e. it is not another drone. Will use this to distinguish static obstacles from our cooperative drones.
+        if R_B[i] != 0.25 #i.e. it is not another drone. Will use this to distinguish static obstacles from our cooperative drones.
             cone_edge_1 = rotate_about_arbitrary_axis(centre, axis1, 90*pi/180)
             cone_edge_2 = rotate_about_arbitrary_axis(centre, axis1, -90*pi/180)
         else

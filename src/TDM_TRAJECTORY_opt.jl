@@ -335,9 +335,9 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
         Qf = Diagonal(@SVector fill(weight_Qf, num_states)) #for terminal cost.  #xf: 0,0,0, Qf 1,1,1
     else
 
-        Q = Diagonal(SA[0, 0, 0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*5, weight_Q*5, weight_Q*5, weight_Q, weight_Q, weight_Q])
+        Q = Diagonal(SA[0, 0, 0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*1, weight_Q*1, weight_Q*1, weight_Q, weight_Q, weight_Q])
         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
-        Qf =Diagonal(SA[0, 0, 0, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf*5, weight_Qf*5, weight_Qf*5, weight_Qf, weight_Qf, weight_Qf])
+        Qf =Diagonal(SA[0, 0, 0, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf*1, weight_Qf*1, weight_Qf*1, weight_Qf, weight_Qf, weight_Qf])
     end
     
     ##Create own objective function. To include slack variable for soft constraint.
@@ -374,8 +374,8 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
 
     # Constraints
     cons = ConstraintList(n, m, Nt)
-    x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -5.0,-5.0,-5.0,  -10,-10,-10]
-    x_max = [500.0,500.0,Inf,  1.0,1.0,1.0,1.0,  5.0,5.0,5.0,  10,10,10]
+    x_min = [0.0,0.0,0.0,  -1.0,-1.0,-1.0,-1.0,  -5.0,-5.0,-5.0,  -2,-2,-2]
+    x_max = [500.0,500.0,Inf,  1.0,1.0,1.0,1.0,  5.0,5.0,5.0,  2,2,2]
 
     u_min = [0.0, 0.0, 0.0, 0.0, 0.0]
     u_max = [10.0,10.0,10.0,10.0,Inf] #Don't need upper bound constraint for slack variable.

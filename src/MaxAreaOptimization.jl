@@ -8,6 +8,7 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter)
     SetObjective(p, obj)
     SetIterationLimit(p, N_iter)
 
+
     # Add constraints to problem
     for i in cons_ext
         AddExtremeConstraint(p, i)
@@ -24,6 +25,7 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter)
         global result = p.x
     end
 
+    ReportStatus(p)
     return result
 
 end

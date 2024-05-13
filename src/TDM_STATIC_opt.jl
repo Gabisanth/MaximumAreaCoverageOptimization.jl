@@ -98,13 +98,15 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter)
     #DirectSearch.SetMinimumMeshSize(p, 5.0)
     SetMaxEvals(p)
 
-    # for i in 1:length(input)
-    #     #if i < 9
-    #     SetGranularity(p, i, 0.1)
-    #     # else
-    #     #     SetGranularity(p, i, 0.1)
-    #     # end
-    # end
+    for i in 1:length(input)
+        #if i < 9
+        SetGranularity(p, i, 1.0)
+        # else
+        #     SetGranularity(p, i, 0.1)
+        # end
+    end
+
+    
 
 
     # progressive_constraint = cons_prog[1]
@@ -184,7 +186,8 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter)
 
     # end
 
-    return result
+    runtime = p.status.runtime_total #Export runtime_data for analysis.
+    return result, runtime
 
 end
 
