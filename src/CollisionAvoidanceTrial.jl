@@ -12,9 +12,9 @@ plotlyjs() #offers better interactivity than GR.
 
 
 # Simulation Parameters.
-tf = 15          #How many seconds to run for.
+tf = 20          #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
-N = 4                #Number of UAVs.
+N = 1                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
 Nt_sim = convert(Int64, tf/dt_sim)  #Number of timesteps in simulation.
 R1 = 150.0           # (user-defined) Initial radius 
@@ -45,39 +45,39 @@ Nm = 5              # Number of applied time-steps
 
 
 radius = 0.25
-#radius = radius*1.1 #margin for error from trajectory optimization.
+radius = radius*1.1 #margin for error from trajectory optimization.
 
 
-# #Single UAV with static obstacle.
-# P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0], zeros(3)) #velocity of exactly zero will cause issues in ORCA.
+#Single UAV with static obstacle.
+P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0], zeros(3)) #velocity of exactly zero will cause issues in ORCA.
 
-# G_A = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+G_A = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
 
-# global x_start = [P_A]
-# global x_final = [G_A]
-
-# #Define static obstacle.
-# R_static_obs = 2.5
-# pos_static_obs = [10,10] #x,y location of static obstacle.
-
-
-#Multiple moving UAVs.
-P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3)) #velocity of exactly zero will cause issues in ORCA.
-P_B = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
-P_C = RBState([10.0, 20.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
-P_D = RBState([10.0, 0.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
-
-G_A = P_B
-G_B = P_A
-G_C = P_D
-G_D = P_C
-
-global x_start = [P_A, P_B, P_C, P_D]
-global x_final = [G_A, G_B, G_C, G_D]
+global x_start = [P_A]
+global x_final = [G_A]
 
 #Define static obstacle.
-R_static_obs = 2
-pos_static_obs = [100,100] #x,y location of static obstacle.
+R_static_obs = 2.5
+pos_static_obs = [10,10] #x,y location of static obstacle.
+
+
+# #Multiple moving UAVs.
+# P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3)) #velocity of exactly zero will cause issues in ORCA.
+# P_B = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+# P_C = RBState([10.0, 20.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+# P_D = RBState([10.0, 0.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+
+# G_A = P_B
+# G_B = P_A
+# G_C = P_D
+# G_D = P_C
+
+# global x_start = [P_A, P_B, P_C, P_D]
+# global x_final = [G_A, G_B, G_C, G_D]
+
+# #Define static obstacle.
+# R_static_obs = 2
+# pos_static_obs = [10,10] #x,y location of static obstacle.
 
 
 

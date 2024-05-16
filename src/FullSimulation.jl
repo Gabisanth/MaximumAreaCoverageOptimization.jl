@@ -32,7 +32,7 @@ h_min = 5            # (user-defined) Flying altitude lower bound (exclude initi
 h_max = 30.0           # (user-defined) Flying altitude upper bound
 r_min = h_min * tan(FOV/2) # (user-defined, replaced later)
 global r_max = h_max * tan(FOV/2) * ones(N)
-global d_lim = 10 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
+global d_lim = 9.2 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
 N_iter = 100         # (use-defined) set the limit of iterations for coverage maximization
 
 # Drone Parameters

@@ -183,20 +183,34 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility_shares, V_pref)
     for i in eachindex(R_B)
         ##1. Get edges of velocity obstacle for A induced by B.
         centre = P_B[i] - P_A #position vector to the centre of the sphere.
+
         r = R_A + R_B[i]
 
-        # if r > norm(centre)
-        #     cone_angle = 90
-        # else
-        #     cone_angle = asind(r / norm(centre))
-        # end
 
-        cone_angle = asind(r / norm(centre))
+        #Can allow small violations if safety margin has been added to the radii.
+        if r > norm(centre)
+            cone_angle = 90
+        else
+            cone_angle = asind(r / norm(centre))
+        end
+
+        if R_B[i] != 0.25*1.1
+            if norm(centre) < R_B[i] + 0.25 #Actual separation requied between UAV and static obstacle.
+                ("Collision with Static Obstacle Detected!")
+            end
+        else
+            if norm(centre) < 0.5 #This is the actual minimum separation required between two UAVs. 
+                print("Collision with other UAV Detected!")
+            end
+        end
+
+
+        #cone_angle = asind(r / norm(centre))
 
         #Need 2 sets of edges to (approximate) the cone. (actually will be a square based pyramid instead of a cone).
         axis1, axis2 = perpendicular_vectors(centre)
 
-        if R_B[i] != 0.25 #i.e. it is not another drone. Will use this to distinguish static obstacles from our cooperative drones.
+        if R_B[i] != 0.25*1.1 #i.e. it is not another drone. Will use this to distinguish static obstacles from our cooperative drones.
             cone_edge_1 = rotate_about_arbitrary_axis(centre, axis1, 90*pi/180)
             cone_edge_2 = rotate_about_arbitrary_axis(centre, axis1, -90*pi/180)
         else
@@ -257,6 +271,27 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility_shares, V_pref)
 
         end
 
+
+
+
+        # ###Alternative way to find u.
+        # centre = P_B[i] - P_A
+        # centre = vec([centre[1]; centre[2]; centre[3]])
+        # rel_vel = V_A - V_B[i]
+        # rel_vel = vec([rel_vel[1]; rel_vel[2]; rel_vel[3]])
+        # r = R_A + R_B[i]
+        # a = norm(centre)^2
+        # b = dot(centre, rel_vel)
+        # c = norm(rel_vel)^2 - (norm((cross(centre, rel_vel)))^2)/(a - r^2)
+        # t = (b+sqrt(b^2 - a*c))/a
+        # ww = rel_vel - t * centre
+        # wwLength = norm(ww)
+        # unitWW = ww/wwLength
+        # u = (r*t - wwLength) * unitWW
+
+        # collision = true
+
+
         #Get u and n vector. Smallest vector to edge of velocity obstacle cone.
         n = u/norm(u)
         u = [u[1] u[2] u[3]]
@@ -267,7 +302,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility_shares, V_pref)
 
     end
   
-    print(collision_status)
+    #print(collision_status)
 
     #Perform the optimization for velocity of A (and B).
     model = Model(Ipopt.Optimizer)
