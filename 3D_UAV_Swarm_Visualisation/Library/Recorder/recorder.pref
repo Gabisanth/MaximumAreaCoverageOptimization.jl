@@ -37,7 +37,7 @@ MonoBehaviour:
   m_Name: Movie
   m_EditorClassIdentifier: 
   enabled: 1
-  take: 3
+  take: 6
   captureEveryNthFrame: 1
   fileNameGenerator:
     m_Path:
@@ -68,7 +68,7 @@ MonoBehaviour:
       m_OutputResolution:
         m_CustomWidth: 1024
         m_CustomHeight: 1024
-        imageHeight: 720
+        imageHeight: 1440
         maxSupportedHeight: 4320
         m_AspectRatio:
           m_CustomAspectX: 1

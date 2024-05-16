@@ -63,7 +63,7 @@ public class DroneMovement : MonoBehaviour
 
     int i = 0;
     int increment = 1;
-    private float delayTimer = 0.1f; // Set the delay time to 3 seconds
+    private float delayTimer = 0.5f; // Set the delay time to 3 seconds
     private float timer; // Timer to keep track of time
 
     void Update(){

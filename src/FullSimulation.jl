@@ -7,6 +7,7 @@ include("TDM_Constraints.jl")
 #include("TDM_Functions.jl")
 include("Plotter.jl")
 include("AreaCoverageCalculation.jl")
+include("ORCA.jl")
 
 using StaticArrays, Rotations, LinearAlgebra
 using RobotZoo: Quadrotor
@@ -19,9 +20,9 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 60           #How many seconds to run for.
+tf = 40           #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
-N = 3                #Number of UAVs.
+N = 3               #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
 Nt_sim = convert(Int64, tf/dt_sim)  #Number of timesteps in simulation.
 R1 = 150.0           # (user-defined) Initial radius 
@@ -31,7 +32,7 @@ h_min = 5            # (user-defined) Flying altitude lower bound (exclude initi
 h_max = 30.0           # (user-defined) Flying altitude upper bound
 r_min = h_min * tan(FOV/2) # (user-defined, replaced later)
 global r_max = h_max * tan(FOV/2) * ones(N)
-global d_lim = 15 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
+global d_lim = 10 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
 N_iter = 100         # (use-defined) set the limit of iterations for coverage maximization
 
 # Drone Parameters
@@ -56,38 +57,44 @@ x_UB = [275]
 y_LB = [100]
 y_UB = [150]
 
+#Define any known obstacle properties.
+R_static_obs = 2.5
+pos_static_obs = [170,170] #x,y location of static obstacle.
+radius = 0.25 #for cooperative UAVs in swarm.
+
+
 include("TDM_TRAJECTORY_opt.jl")
 
 ##Simulation Initialisation.
-#Import datapoints (for dynamically changing area of interest.)
-# Path to your Excel file
-file_path = "C://Users//gabis//Desktop//FYP Repos//MaximumAreaCoverageOptimization//src//FirePoints.xlsx"
+# #Import datapoints (for dynamically changing area of interest.)
+# # Path to your Excel file
+# file_path = "C://Users//gabis//Desktop//FYP Repos//MaximumAreaCoverageOptimization//src//FirePoints.xlsx"
 
-# Load the Excel file
-xlsx_file = XLSX.readxlsx(file_path)
+# # Load the Excel file
+# xlsx_file = XLSX.readxlsx(file_path)
 
-# Access the first sheet in the Excel file
-sheet = xlsx_file["Sheet1"]  # Replace "Sheet1" with the name of your sheet if different
-new_points = vec(sheet[1:1,:])
-filter!(!ismissing, new_points)
+# # Access the first sheet in the Excel file
+# sheet = xlsx_file["Sheet1"]  # Replace "Sheet1" with the name of your sheet if different
+# new_points = vec(sheet[1:1,:])
+# filter!(!ismissing, new_points)
 
-global points_of_interest = Vector{Vector{Float64}}()
-subarray_size = 5
+# global points_of_interest = Vector{Vector{Float64}}()
+# subarray_size = 5
 
-for i in 1:subarray_size:length(new_points)
-    new_point = new_points[i:min(i+subarray_size-1, end)]
-    check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
-    if any(check)
-        new_point[4] = 250.0
-    end
-    push!(points_of_interest, new_point)
-end
+# for i in 1:subarray_size:length(new_points)
+#     new_point = new_points[i:min(i+subarray_size-1, end)]
+#     check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
+#     if any(check)
+#         new_point[4] = 250.0
+#     end
+#     push!(points_of_interest, new_point)
+# end
 
 
 
 
 #Initialise the points of interest. (for static environment)
-#global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,500.0,500.0) #Create initial set of points of interest.
+global points_of_interest = AreaCoverageCalculation.createPOI(5.0,5.0,100.0,100.0) #Create initial set of points of interest.
 
 
 
@@ -147,8 +154,8 @@ cons_ext = cons1
 cons_prog = []#[cons1_progressive]
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-global STATIC_input_MADS = allocate_even_circles_in_a_line(20.0, 0.0, N, 10 * tan(FOV/2), 200 , 250)
-#global STATIC_input_MADS = Base_Functions.allocate_even_circles(10.0, N, 10 * tan(FOV/2), 250.0, 250.0)#returns vector of [x;y;R] values.
+#global STATIC_input_MADS = allocate_even_circles_in_a_line(20.0, 0.0, N, 10 * tan(FOV/2), 200 , 250)
+global STATIC_input_MADS = Base_Functions.allocate_even_circles(40.0, N, 10 * tan(FOV/2), 250.0, 250.0)#returns vector of [x;y;R] values.
 ini_circles = AreaCoverageCalculation.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 
 #Initialise area maximisation placeholders.
@@ -159,11 +166,14 @@ single_input_pb = []                        # document the circles at each epoch
 single_output_pb = []
 
 global vels = [] # for measuring average speed of drone. ##Purely for testing purposes.
+global velocities = [zeros(Float64, 3) for _ in 1:N]
 
 global target_location_memory = [[0.0], [0.0]] #For recording target location from [t-2, t-1]. For calculating previous target velocity.
 
 
 global runtime_data_MADS = []
+
+global collision_avoidance_manoeuvres = 0
 
 ##Main Simulation Loop over time.
 for t in 1:Nt_sim
@@ -173,19 +183,19 @@ for t in 1:Nt_sim
         target_location_memory[1] = single_output
     end
 
-    if t != 1
-        new_points = vec(sheet[t+1,:])
-        filter!(!ismissing, new_points)
+    # if t != 1
+    #     new_points = vec(sheet[t+1,:])
+    #     filter!(!ismissing, new_points)
 
-        for i in 1:subarray_size:length(new_points)
-            new_point = new_points[i:min(i+subarray_size-1, end)]
-            check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
-            if any(check)
-                new_point[4] = 250.0
-            end
-            push!(points_of_interest, new_point)
-        end
-    end
+    #     for i in 1:subarray_size:length(new_points)
+    #         new_point = new_points[i:min(i+subarray_size-1, end)]
+    #         check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
+    #         if any(check)
+    #             new_point[4] = 250.0
+    #         end
+    #         push!(points_of_interest, new_point)
+    #     end
+    # end
 
     ##Perform Area Maximization Optimization.
     # 0. Remove covered area.
@@ -196,42 +206,42 @@ for t in 1:Nt_sim
     global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(drone_locs, points_of_interest)
 
 
-    if t != 1
-        for i in 1:N
-            #check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2) 
-            check = drone_locs[i] .< x_UB .&& drone_locs[i] .> x_LB  .&& drone_locs[i+N] .< y_UB .&& drone_locs[i+N] .> y_LB
+    # if t != 1
+    #     for i in 1:N
+    #         #check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2) 
+    #         check = drone_locs[i] .< x_UB .&& drone_locs[i] .> x_LB  .&& drone_locs[i+N] .< y_UB .&& drone_locs[i+N] .> y_LB
 
-            if any(check)
+    #         if any(check)
                 
-                global r_max[i] = 10 * tan(FOV/2)
+    #             global r_max[i] = 10 * tan(FOV/2)
             
-            else
+    #         else
                
-                global r_max[i] = h_max * tan(FOV/2)
+    #             global r_max[i] = h_max * tan(FOV/2)
 
-            end
-        end
-    end
+    #         end
+    #     end
+    # end
 
 
-    if t != 1
-        for i in 1:N
-            if abs(10 - drone_locs[i+2N] / tan(FOV/2)) < 0.5
-                check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2)
-                if any(check)
+    # if t != 1
+    #     for i in 1:N
+    #         if abs(10 - drone_locs[i+2N] / tan(FOV/2)) < 1
+    #             check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2)
+    #             if any(check)
                 
-                    global r_max[i] = 10 * tan(FOV/2)
+    #                 global r_max[i] = 10 * tan(FOV/2)
                 
-                else
+    #             else
                    
-                    global r_max[i] = h_max * tan(FOV/2)
+    #                 global r_max[i] = h_max * tan(FOV/2)
     
-                end
-            end
+    #             end
+    #         end
 
 
-        end
-    end
+    #     end
+    # end
 
 
 
@@ -265,31 +275,94 @@ for t in 1:Nt_sim
 
 
     ##Perform Trajectory Optimization.
-    #Define vector of Trajectory Problem objects. (Does this need to be done inside this time loop??)
+    #Define vector of Trajectory Problem objects.
+
+    # ####Trajectory Optimization Integrated with Collision Avoidance.
+    neighbours = []
+    neighbours_radii = []
+    responsibility_shares = []
+    
+
+    for i in 1:N
+        local_neighbours = []
+        local_neighbours_radii = []
+        local_responsibility_shares = []
+        for j in 1:N
+            if j != i
+                if norm(x_start[i][1:3] - x_start[j][1:3]) < 10
+                    push!(local_neighbours, x_start[j])
+                    push!(local_neighbours_radii, radius)
+                    push!(local_responsibility_shares, 0.5)
+                end
+            end
+        end
+
+        if norm(x_start[i][1:2] - pos_static_obs[1:2]) < 10
+            static_obs = RBState([pos_static_obs[1], pos_static_obs[2], x_start[i][3]], UnitQuaternion(I), [0.0, 0.0, 0.0], zeros(3))
+            push!(local_neighbours, static_obs)
+            push!(local_neighbours_radii, R_static_obs)
+            push!(local_responsibility_shares, 1) #Drone needs to take full responsibility in avoiding static obstacles.
+        end
+
+        push!(neighbours, local_neighbours)
+        push!(neighbours_radii, local_neighbours_radii)
+        push!(responsibility_shares, local_responsibility_shares)
+    end
+
     global MAVs = Vector{TDM_TRAJECTORY_opt.Trajectory_Problem}()
-    for i in 1:N
-        V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 2
-        x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_pref[1], V_pref[2], V_pref[3]], zeros(3)) 
 
-        push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i], r_max[i], d_lim[i], FOV))
+    for i in 1:N
+        if isempty(neighbours[i])
+            collision_avoidance_mode = true
+
+            V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 2
+         
+
+            x_start[i] = RBState(x_start[i][1:3], UnitQuaternion(I), [velocities[i][1], velocities[i][2], velocities[i][3]], zeros(3)) 
+            x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_pref[1], V_pref[2], V_pref[3]], zeros(3)) 
+            push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i], r_max[i], d_lim[i], FOV))
+
+            local MAV = MAVs[i]
+            output = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt_horizon,Nm,collision_avoidance_mode) #Will append the next state of each UAV into their StateHistory.
+            global x_start[i] = output
+            velocities[i] = output[8:10]
+            push!(vels, norm(output[8:10]))
+
+        else
+            global collision_avoidance_manoeuvres += 1
+            collision_avoidance_mode = true
+
+            #Populate the V_pref.
+            V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 2
+            #V_pref = reshape(x_start[i][1:3], 1,3)
+
+            #Create neighbours info arrays
+            P_Bs = Vector{Matrix{Float64}}()
+            V_Bs = Vector{Matrix{Float64}}()
+            for j in 1:length(neighbours[i])
+                push!(P_Bs, reshape(neighbours[i][j][1:3],1,3))
+                push!(V_Bs, reshape(neighbours[i][j][8:10],1,3))
+            end
+
+            x_start[i] = RBState(x_start[i][1:3], UnitQuaternion(I), [velocities[i][1], velocities[i][2], velocities[i][3]], zeros(3)) 
+
+            
+            V_optimal, collision_status = ORCA.ORCA_3D(radius, neighbours_radii[i], reshape(x_start[i][1:3], 1,3), P_Bs, reshape(x_start[i][8:10],1,3), V_Bs, responsibility_shares[i], V_pref)
+            #println((V_optimal))
+
+            x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_optimal[1], V_optimal[2], V_optimal[3]], zeros(3)) 
+            push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i], r_max[i], d_lim[i], FOV))
+            
+            local MAV = MAVs[i]
+            output = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt_horizon,Nm,collision_avoidance_mode) #Will append the next state of each UAV into their StateHistory.
+            global x_start[i] = output
+            velocities[i] = output[8:10]
+            push!(vels, norm(output[8:10]))
+        end
     end
 
-    #Collision Avoidance Placeholders.
-   collision = true
+    #print(velocities)
 
-    #Run Main Trajectory Optimization step.
-    global velocities = []
-    for i in 1:N
-        local MAV = MAVs[i]
-        output = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt_horizon,Nm,collision) #Will append the next state of each UAV into their StateHistory.
-        push!(velocities, output[8:10])
-        push!(vels, norm(output[8:10]))
-        #println("X speed: ")
-        #print(t[8])
-        #println(output_log)
-    end
-
-    #Check for collision. (Can add this after).
 
     ##Prepare for next timestep. (Use the next state to document the initial value for next time step.)
     #Give new 'pre_optimized_circles' (i.e. vector of Circle objects.)
@@ -303,26 +376,16 @@ for t in 1:Nt_sim
         push!(y_positions, convert(Float64, MAVs[i].StateHistory[end][2]))
         local radius =  MAVs[i].StateHistory[end][3] * tan(FOV/2)
         push!(R_values, convert(Float64, radius))
-
-        #R value for MADS will be modified if the height goes beyond the r_max value.
-        # if radius > r_max[i] 
-        #     push!(R_values_MADS, r_max[i])
-        #     #global above_max_counter += 1
-        #     #push!(R_values, r_max)
-        # else
         push!(R_values_MADS, convert(Float64, radius))
         #    # push!(R_values, convert(Float64, radius))
         # end
     end
     xyR = [x_positions;y_positions;R_values]
     xyR_MADS = [x_positions;y_positions;R_values_MADS]
-    #global pre_optimized_circles = Base_Functions.make_circles(xyR) #for next timestep.
-
-    #Update circles pool, with the new position of drone, to say that this area has now been covered.
-    #global circles_pool = union(circles_pool, pre_optimized_circles)
 
     #Give (modified) input for next MADS iteration.
     global pre_optimized_circles_MADS = AreaCoverageCalculation.make_circles(xyR_MADS) #for next timestep.
+
 
     #Extract Trajectories.
     global X = []
@@ -340,10 +403,115 @@ for t in 1:Nt_sim
     #print(X)
     push!(Xs,X)
 
-    #Document the list of drone positions and areas.
-    push!(single_input_pb, single_input)
-    #Document the list of targets given to the drone.
-    push!(single_output_pb, single_output)
+     #Document the list of drone positions and areas.
+     push!(single_input_pb, single_input)
+     #Document the list of targets given to the drone.
+     push!(single_output_pb, single_output)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#     global MAVs = Vector{TDM_TRAJECTORY_opt.Trajectory_Problem}()
+#     for i in 1:N
+#         V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 2
+#         x_final[i] =  RBState(x_final[i][1:3], UnitQuaternion(I), [V_pref[1], V_pref[2], V_pref[3]], zeros(3)) 
+
+#         push!(MAVs, TDM_TRAJECTORY_opt.Trajectory_Problem(mass,J,gravity,motor_dist,kf,km,x_start[i],x_final[i], r_max[i], d_lim[i], FOV))
+#     end
+
+#     #Collision Avoidance Placeholders.
+#    collision = true
+
+#     #Run Main Trajectory Optimization step.
+#     global velocities = []
+#     for i in 1:N
+#         local MAV = MAVs[i]
+#         output = TDM_TRAJECTORY_opt.optimize(MAV,hor,Nt_horizon,Nm,collision) #Will append the next state of each UAV into their StateHistory.
+#         push!(velocities, output[8:10])
+#         push!(vels, norm(output[8:10]))
+#         #println("X speed: ")
+#         #print(t[8])
+#         #println(output_log)
+#     end
+
+#     #Check for collision. (Can add this after).
+
+#     ##Prepare for next timestep. (Use the next state to document the initial value for next time step.)
+#     #Give new 'pre_optimized_circles' (i.e. vector of Circle objects.)
+#     x_positions = Vector{Float64}([])
+#     y_positions = Vector{Float64}([])
+#     R_values = Vector{Float64}([])   
+#     R_values_MADS = Vector{Float64}([]) #modified R values for MADS algorithm.
+
+#     for i in 1:N #for each UAV.
+#         push!(x_positions, convert(Float64, MAVs[i].StateHistory[end][1]))
+#         push!(y_positions, convert(Float64, MAVs[i].StateHistory[end][2]))
+#         local radius =  MAVs[i].StateHistory[end][3] * tan(FOV/2)
+#         push!(R_values, convert(Float64, radius))
+
+#         #R value for MADS will be modified if the height goes beyond the r_max value.
+#         # if radius > r_max[i] 
+#         #     push!(R_values_MADS, r_max[i])
+#         #     #global above_max_counter += 1
+#         #     #push!(R_values, r_max)
+#         # else
+#         push!(R_values_MADS, convert(Float64, radius))
+#         #    # push!(R_values, convert(Float64, radius))
+#         # end
+#     end
+#     xyR = [x_positions;y_positions;R_values]
+#     xyR_MADS = [x_positions;y_positions;R_values_MADS]
+#     #global pre_optimized_circles = Base_Functions.make_circles(xyR) #for next timestep.
+
+#     #Update circles pool, with the new position of drone, to say that this area has now been covered.
+#     #global circles_pool = union(circles_pool, pre_optimized_circles)
+
+#     #Give (modified) input for next MADS iteration.
+#     global pre_optimized_circles_MADS = AreaCoverageCalculation.make_circles(xyR_MADS) #for next timestep.
+
+#     #Extract Trajectories.
+#     global X = []
+#     for i in 1:N  # UAV index i
+#         local MAV = MAVs[i]
+#         x = zeros(Float64, (length(MAV.StateHistory),13))
+#         # col1-3 (position); col4-7 (quaternion); col8-10(linear velocity); col11-13(angular velocity)
+#         for j in 1:length(MAV.StateHistory) # trajectory optimization index j (row)
+#             x[j,:] = MAV.StateHistory[j]    # StateHistory content(column)
+#         end
+#         push!(X,x)
+#         # "x" is the trajectory for each UAV
+#         # "X" contains all the individual "x"
+#     end
+#     #print(X)
+#     push!(Xs,X)
+
+#     #Document the list of drone positions and areas.
+#     push!(single_input_pb, single_input)
+#     #Document the list of targets given to the drone.
+#     push!(single_output_pb, single_output)
 
 end
 
@@ -351,6 +519,8 @@ end
 #println(sum(vels)/length(vels))
 
 #println(length(points_of_interest))
+
+println(collision_avoidance_manoeuvres)
 
 
 
@@ -534,30 +704,6 @@ b_data = []
 c_data = []
 d_data = []
 
-## Plot 1(a): cylinder 
-#using Plots
-r = 150 + Nt_sim*5
-h = h_max
-m, n =200, 200
-u = range(0, 2pi, length=m)
-v = range(0, h, length=n)
-us = ones(m)*u'
-vs = v*ones(n)'
-#Surface parameterization
-X = r*cos.(us)
-Y = r*sin.(us)
-Z = vs
-plot(p2, Plots.surface(X, Y, Z, size=(600,600), 
-    cbar=:none, 
-    legend=false,
-    #colorscale="Reds",
-    linewidth=0.5, 
-    linealpha=0.4,
-    alpha=0.4, 
-    # linecolor=:red,
-    camera = (45, 10), 
-), label = "Domain")
-
 
 
 # plot()
@@ -603,6 +749,7 @@ plot!(p2, grid = true, gridwidth = 3,
 
 
 
+savefig(p2, "FullSimulationTrajectories.html")
 
 
 # # #3. Plotting the target positions for the drones at each timestep.
@@ -678,13 +825,13 @@ plot!(p2, grid = true, gridwidth = 3,
 #6. Write data to Excel sheet for attitude and position plotting.
 for i in 1:N
     local data = [
-    X_data[i:N:Nt_sim],
-    Y_data[i:N:Nt_sim],
-    Z_data[i:N:Nt_sim],
-    a_data[i:N:Nt_sim],
-    b_data[i:N:Nt_sim],
-    c_data[i:N:Nt_sim],
-    d_data[i:N:Nt_sim]
+    X_data[i:N:end],
+    Y_data[i:N:end],
+    Z_data[i:N:end],
+    a_data[i:N:end],
+    b_data[i:N:end],
+    c_data[i:N:end],
+    d_data[i:N:end]
     ]
 
     # Specify the file path

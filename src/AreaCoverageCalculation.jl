@@ -2,6 +2,7 @@ module AreaCoverageCalculation
 
 include("Base_Functions.jl")
 using .Base_Functions
+using Base.Threads
 
 export createPOI
 
@@ -76,7 +77,22 @@ function calculateArea(circles::Vector{Float64}, points::Vector{Vector{Float64}}
         end
     end
 
-    
+    # ###Parallelisation Trial:
+    # area_covered = Atomic{Int}(0)
+    # @threads for p in 1:length(points)#eachindex(points)
+    #     for c in 1:N_circles
+    #         #if points[p][5] == false
+    #         if sqrt((points[p][1] - circles[c])^2 + (points[p][2]-circles[N_circles+c])^2) < circles[2*N_circles+c]
+    #             Threads.atomic_add!(area_covered, 1)
+    #             #area_covered += points[p][4]
+    #             #points[p][5] = true
+    #             break #if the current point in iteration is captured then can continue to next point.
+    #         end
+    #         #end
+    #     end
+    # end
+
+    ####Alternative method.
     # for c in 1:N_circles
     #     for p in 1:length(points)#eachindex(points)
     #         #if points[p][5] == false

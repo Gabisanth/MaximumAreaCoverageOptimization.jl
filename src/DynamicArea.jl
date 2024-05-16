@@ -10,8 +10,8 @@ X = 500
 Y = 500
 x_start1 = 200
 x_start2 = 300
-y_start1 = 245
-y_start2 = 255
+y_start1 = 345
+y_start2 = 355
 
 # Constants
 EMPTY,TREE, FIRE = 0,1,2

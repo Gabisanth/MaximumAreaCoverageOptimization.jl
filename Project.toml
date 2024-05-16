@@ -1,5 +1,6 @@
 [deps]
 Altro = "5dcf52e5-e2fb-48e0-b826-96f46d2e3e73"
+Blink = "ad839575-38b3-5650-b840-f874b8c74a25"
 FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"

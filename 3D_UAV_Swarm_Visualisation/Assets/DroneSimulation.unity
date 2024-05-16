@@ -316,7 +316,7 @@ Transform:
   m_GameObject: {fileID: 57892608}
   serializedVersion: 2
   m_LocalRotation: {x: 0.18301274, y: -0.6830127, z: 0.18301274, w: 0.6830127}
-  m_LocalPosition: {x: 330, y: 100, z: 250}
+  m_LocalPosition: {x: 420, y: 70, z: 250}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1647,7 +1647,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 315ad52bc251a76439aa87bf2cd82409, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  textAssetData: {fileID: 4900000, guid: 55449a278302651459ecc55c17bad56e, type: 3}
+  textAssetData: {fileID: 4900000, guid: 722341b6b75303444b31f3d99d532d6e, type: 3}
   Drone1:
     x: []
     y: []
@@ -1858,7 +1858,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 315ad52bc251a76439aa87bf2cd82409, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  textAssetData: {fileID: 4900000, guid: 55449a278302651459ecc55c17bad56e, type: 3}
+  textAssetData: {fileID: 4900000, guid: 4cc69455c863fdd479bac21476be13dd, type: 3}
   Drone1:
     x: []
     y: []
@@ -2701,7 +2701,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 315ad52bc251a76439aa87bf2cd82409, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  textAssetData: {fileID: 4900000, guid: 55449a278302651459ecc55c17bad56e, type: 3}
+  textAssetData: {fileID: 4900000, guid: a55d0423ec9aaa7419a0ee48d965e6ce, type: 3}
   Drone1:
     x: []
     y: []

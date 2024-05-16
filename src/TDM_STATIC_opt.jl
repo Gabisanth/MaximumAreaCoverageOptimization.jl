@@ -96,7 +96,7 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter)
     SetIterationLimit(p, N_iter)
     
     #DirectSearch.SetMinimumMeshSize(p, 5.0)
-    SetMaxEvals(p)
+    SetMaxEvals(p) #Uses parallelisation by using number of threads available.
 
     for i in 1:length(input)
         #if i < 9

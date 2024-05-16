@@ -317,8 +317,8 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     # xf = SVector(MAV.StateHistory[end]); # however it is the given x0, 20230810
     weight_Q = 1.0 #1e-10 #Penalise the sum of state errors in the states.
     weight_R = 1.0 #1e-10 #Penalise controller effort.
-    MU_exact = 100.0 #penalty factor for the soft constraint.
-    MU_quadratic = 1000.0
+    MU_exact = 100#100.0 #penalty factor for the soft constraint.
+    MU_quadratic = 1000#1000.0
     weight_Qf = 1.0 #Penalise current state error.
 
     # Constraints
@@ -332,7 +332,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     if collision_avoidance_mode == false
         Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])
         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
-        Qf = Diagonal(@SVector fill(weight_Qf, num_states)) #for terminal cost.  #xf: 0,0,0, Qf 1,1,1
+        Qf = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])#for terminal cost.  #xf: 0,0,0, Qf 1,1,1
     else
 
         Q = Diagonal(SA[0, 0, 0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*1, weight_Q*1, weight_Q*1, weight_Q, weight_Q, weight_Q])

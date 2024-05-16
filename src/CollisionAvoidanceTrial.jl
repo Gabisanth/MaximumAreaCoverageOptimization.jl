@@ -6,14 +6,15 @@ using StaticArrays, Rotations, LinearAlgebra
 using RobotZoo: Quadrotor
 using RobotDynamics
 using Plots
+using Blink
 default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 
 # Simulation Parameters.
-tf = 20          #How many seconds to run for.
+tf = 15          #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
-N = 1                #Number of UAVs.
+N = 4                #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
 Nt_sim = convert(Int64, tf/dt_sim)  #Number of timesteps in simulation.
 R1 = 150.0           # (user-defined) Initial radius 
@@ -42,39 +43,41 @@ R_D = 10.0          # Danger radius
 R_C = 1.0           # Collision radius
 Nm = 5              # Number of applied time-steps
 
+
 radius = 0.25
+#radius = radius*1.1 #margin for error from trajectory optimization.
 
 
-#Single UAV with static obstacle.
-P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0], zeros(3)) #velocity of exactly zero will cause issues in ORCA.
+# #Single UAV with static obstacle.
+# P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0], zeros(3)) #velocity of exactly zero will cause issues in ORCA.
 
-G_A = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+# G_A = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
 
-global x_start = [P_A]
-global x_final = [G_A]
-
-#Define static obstacle.
-R_static_obs = 2.5
-pos_static_obs = [10,10] #x,y location of static obstacle.
-
-
-# #Multiple moving UAVs.
-# P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3)) #velocity of exactly zero will cause issues in ORCA.
-# P_B = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
-# P_C = RBState([10.0, 20.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
-# P_D = RBState([10.0, 0.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
-
-# G_A = P_B
-# G_B = P_A
-# G_C = P_D
-# G_D = P_C
-
-# global x_start = [P_A, P_B, P_C, P_D]
-# global x_final = [G_A, G_B, G_C, G_D]
+# global x_start = [P_A]
+# global x_final = [G_A]
 
 # #Define static obstacle.
-# R_static_obs = 5
-# pos_static_obs = [100,100] #x,y location of static obstacle.
+# R_static_obs = 2.5
+# pos_static_obs = [10,10] #x,y location of static obstacle.
+
+
+#Multiple moving UAVs.
+P_A = RBState([0.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3)) #velocity of exactly zero will cause issues in ORCA.
+P_B = RBState([20.0, 10, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+P_C = RBState([10.0, 20.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+P_D = RBState([10.0, 0.0, 5.0], UnitQuaternion(I), [0.0, 0.0, 0.0]+rand(-0.001:0.0000001:0.001, 3), zeros(3))
+
+G_A = P_B
+G_B = P_A
+G_C = P_D
+G_D = P_C
+
+global x_start = [P_A, P_B, P_C, P_D]
+global x_final = [G_A, G_B, G_C, G_D]
+
+#Define static obstacle.
+R_static_obs = 2
+pos_static_obs = [100,100] #x,y location of static obstacle.
 
 
 
@@ -124,7 +127,7 @@ for t in 1:Nt_sim
             collision_avoidance_mode = true
 
             if t == 1
-                V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 1.8
+                V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * 2
             else
                 V_pref =  normalize(x_final[i][1:3] .- x_start[i][1:3]) * norm(x_start[i][8:10])
             end
@@ -280,7 +283,7 @@ end
 
 #2. Plotting trajectory.
 # Plot 3D trajectories
-p2 = plot()
+p2 = plot3d()
 
 global palettes = ["blue", "green", "orange", "purple", "cyan", "pink", "gray", "olive"]
 
@@ -292,29 +295,7 @@ b_data = []
 c_data = []
 d_data = []
 
-## Plot 1(a): cylinder 
-#using Plots
-r = 150 + Nt_sim*5
-h = h_max
-m, n =200, 200
-u = range(0, 2pi, length=m)
-v = range(0, h, length=n)
-us = ones(m)*u'
-vs = v*ones(n)'
-#Surface parameterization
-X = r*cos.(us)
-Y = r*sin.(us)
-Z = vs
-plot(p2, Plots.surface(X, Y, Z, size=(600,600), 
-    cbar=:none, 
-    legend=false,
-    #colorscale="Reds",
-    linewidth=0.5, 
-    linealpha=0.4,
-    alpha=0.4, 
-    # linecolor=:red,
-    camera = (45, 10), 
-), label = "Domain")
+
 
 
 
@@ -357,6 +338,25 @@ plot!(p2, grid = true, gridwidth = 3,
     camera=(45, 30),
 )
 
+
+
+r = R_static_obs
+h = 20
+m, n =200, 200
+u = range(0, 2pi, length=m)
+v = range(0, h, length=n)
+us = ones(m)*u'
+vs = v*ones(n)'
+#Surface parameterization
+X = r*cos.(us) .+ pos_static_obs[1]
+Y = r*sin.(us) .+ pos_static_obs[2]
+Z = vs
+surface!(p2, X,Y,Z, label = "Domain", color=:red, cbar=false)
+plot!(p2, aspect_ratio=:equal)
+
+
+
+savefig(p2, "CollisionAvoidanceTesting.html")
 
 
 using XLSX
