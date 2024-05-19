@@ -310,7 +310,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility_shares, V_pref)
     @variable(model, Vx)
     @variable(model, Vy)
     @variable(model, Vz)
-    @objective(model, Min, (Vx-V_pref[1])^2 + (Vy-V_pref[2])^2 + (Vz-V_pref[3])^2 + 3*((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2))
+    @objective(model, Min, 0.25*((Vx-V_pref[1])^2 + (Vy-V_pref[2])^2 + (Vz-V_pref[3])^2) + 0.75*((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2))
 
 
     for i in eachindex(R_B)
@@ -322,7 +322,7 @@ function ORCA_3D(R_A, R_B, P_A, P_B, V_A, V_B, responsibility_shares, V_pref)
             @constraint(model, dot([Vx Vy Vz] - V_A - responsibility_shares[i]*(u_all[i]), n_all[i])  <= 0) #can add extra margin to keep it out.
         end
     end
-    #@constraint(model, ((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2) <= (0.5)^2) #Physical limits included.
+    #@constraint(model, ((Vx-V_A[1])^2 + (Vy-V_A[2])^2 + (Vz-V_A[3])^2) <= (1)^2) #Physical limits included.
 
     optimize!(model)
     

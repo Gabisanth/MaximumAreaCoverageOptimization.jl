@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Read data from Excel file
-df = pd.read_excel('src\MADS_runtime_comparison_Parallelisation_on_both.xlsx', engine='openpyxl', usecols=range(10))
+df = pd.read_excel('src\MADS_runtime_comparison_Parallelisation.xlsx', engine='openpyxl', usecols=range(10))
 
 # Create a figure and axis object
 fig, ax = plt.subplots()
@@ -18,7 +18,7 @@ plt.xticks(range(1, len(df.columns) + 1), df.columns)
 
 # Set plot title and labels
 #plt.title('Effect of Area Discretization Mesh Coarsening on Computation Time')
-plt.xlabel('Mesh Size (m)')
+plt.xlabel('Number of Threads')
 plt.ylabel('Optimization Runtime (s)')
 
 # Show plot
