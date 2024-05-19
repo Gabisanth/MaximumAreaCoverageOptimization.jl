@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Read data from Excel file
-df = pd.read_excel('src\MADS_runtime_comparison_MeshCoarsening.xlsx', engine='openpyxl', usecols=range(10))
+df = pd.read_excel('src\MADS_runtime_comparison_Parallelisation_on_both.xlsx', engine='openpyxl', usecols=range(10))
 
 # Create a figure and axis object
 fig, ax = plt.subplots()

@@ -87,10 +87,10 @@ function allocate_even_circles_in_a_line(separationx::Float64, separationy::Floa
 
 end
 
-function MADS_to_ALTRO(z::Vector{Float64})
+function MADS_to_ALTRO(z::Vector{Float64}, FOV)
 
     N = Int(length(z)/3)
-    FOV = 80/180*pi
+
 
     x = Vector{RBState}()
     for i in range(1,stop=N)
@@ -121,6 +121,15 @@ function plot_circle(center_x, center_y, radius, plot_object, this_color)
     y = center_y .+ radius * sin.(θ)
 
     plot!(plot_object, x, y, legend = false, color=this_color, fill = true)
+end
+
+function plot_circleblack(center_x, center_y, radius, plot_object, this_color)
+    θ = LinRange(0, 2π, 20)
+    x = center_x .+ radius * cos.(θ)
+    y = center_y .+ radius * sin.(θ)
+
+    plot!(plot_object, x, y, legend = false, color=:black, fill = true)
+
 end
 
 

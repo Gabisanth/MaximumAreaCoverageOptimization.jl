@@ -20,19 +20,19 @@ default(show = true)
 plotlyjs() #offers better interactivity than GR.
 
 # Simulation Parameters.
-tf = 40           #How many seconds to run for.
+tf = 60          #How many seconds to run for.
 Xs= []              #Contains the trajectories for each UAV at each timestep.
 N = 3               #Number of UAVs.
 dt_sim = 0.5          #Timestep of whole simulation.
 Nt_sim = convert(Int64, tf/dt_sim)  #Number of timesteps in simulation.
 R1 = 150.0           # (user-defined) Initial radius 
 ΔR = 5.0             # Expanding rate: 5m/update
-FOV = 80/180*π       # FOV in radians
+FOV = 100/180*π       # FOV in radians
 h_min = 5            # (user-defined) Flying altitude lower bound (exclude initialization)
 h_max = 30.0           # (user-defined) Flying altitude upper bound
 r_min = h_min * tan(FOV/2) # (user-defined, replaced later)
 global r_max = h_max * tan(FOV/2) * ones(N)
-global d_lim = 9.2 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
+global d_lim = 15 * ones(N)           # (user-defined) limitations on displacement of group UAV induced from optimization. 
 N_iter = 100         # (use-defined) set the limit of iterations for coverage maximization
 
 # Drone Parameters
@@ -52,8 +52,8 @@ R_C = 1.0           # Collision radius
 Nm = 5              # Number of applied time-steps
 
 #Define Known Interesting region boundaries.
-x_LB = [225]
-x_UB = [275] 
+x_LB = [200]
+x_UB = [250] 
 y_LB = [100]
 y_UB = [150]
 
@@ -66,35 +66,37 @@ radius = 0.25 #for cooperative UAVs in swarm.
 include("TDM_TRAJECTORY_opt.jl")
 
 ##Simulation Initialisation.
-# #Import datapoints (for dynamically changing area of interest.)
-# # Path to your Excel file
-# file_path = "C://Users//gabis//Desktop//FYP Repos//MaximumAreaCoverageOptimization//src//FirePoints.xlsx"
+#Import datapoints (for dynamically changing area of interest.)
+# Path to your Excel file
+file_path = "C://Users//gabis//Desktop//FYP Repos//MaximumAreaCoverageOptimization//src//FirePoints.xlsx"
 
-# # Load the Excel file
-# xlsx_file = XLSX.readxlsx(file_path)
+# Load the Excel file
+xlsx_file = XLSX.readxlsx(file_path)
 
-# # Access the first sheet in the Excel file
-# sheet = xlsx_file["Sheet1"]  # Replace "Sheet1" with the name of your sheet if different
-# new_points = vec(sheet[1:1,:])
-# filter!(!ismissing, new_points)
+# Access the first sheet in the Excel file
+sheet = xlsx_file["Sheet1"]  # Replace "Sheet1" with the name of your sheet if different
+new_points = vec(sheet[1:1,:])
+filter!(!ismissing, new_points)
 
-# global points_of_interest = Vector{Vector{Float64}}()
-# subarray_size = 5
+global points_of_interest = Vector{Vector{Float64}}()
+global fire_point_xy_ccordinates = Vector{Vector{Float64}}()
+subarray_size = 5
 
-# for i in 1:subarray_size:length(new_points)
-#     new_point = new_points[i:min(i+subarray_size-1, end)]
-#     check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
-#     if any(check)
-#         new_point[4] = 250.0
-#     end
-#     push!(points_of_interest, new_point)
-# end
+for i in 1:subarray_size:length(new_points)
+    new_point = new_points[i:min(i+subarray_size-1, end)]
+    check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
+    if any(check)
+        new_point[4] = 500.0
+    end
+    push!(points_of_interest, new_point)
+    push!(fire_point_xy_ccordinates, new_point[1:2])
+end
 
 
 
 
 #Initialise the points of interest. (for static environment)
-global points_of_interest = AreaCoverageCalculation.createPOI(5.0,5.0,100.0,100.0) #Create initial set of points of interest.
+#global points_of_interest = AreaCoverageCalculation.createPOI(5.0,5.0,100.0,100.0) #Create initial set of points of interest.
 
 
 
@@ -154,8 +156,8 @@ cons_ext = cons1
 cons_prog = []#[cons1_progressive]
 
 #Allocate the initial circles. (i.e. UAV starting positions).
-#global STATIC_input_MADS = allocate_even_circles_in_a_line(20.0, 0.0, N, 10 * tan(FOV/2), 200 , 250)
-global STATIC_input_MADS = Base_Functions.allocate_even_circles(40.0, N, 10 * tan(FOV/2), 250.0, 250.0)#returns vector of [x;y;R] values.
+global STATIC_input_MADS = allocate_even_circles_in_a_line(30.0, 0.0, N, 10 * tan(FOV/2), 180 , 350)
+#global STATIC_input_MADS = Base_Functions.allocate_even_circles(40.0, N, 10 * tan(FOV/2), 250.0, 250.0)#returns vector of [x;y;R] values.
 ini_circles = AreaCoverageCalculation.make_circles(STATIC_input_MADS) #returns vector of Circle objects.
 
 #Initialise area maximisation placeholders.
@@ -183,19 +185,20 @@ for t in 1:Nt_sim
         target_location_memory[1] = single_output
     end
 
-    # if t != 1
-    #     new_points = vec(sheet[t+1,:])
-    #     filter!(!ismissing, new_points)
+    if t != 1
+        new_points = vec(sheet[t+1,:])
+        filter!(!ismissing, new_points)
 
-    #     for i in 1:subarray_size:length(new_points)
-    #         new_point = new_points[i:min(i+subarray_size-1, end)]
-    #         check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
-    #         if any(check)
-    #             new_point[4] = 250.0
-    #         end
-    #         push!(points_of_interest, new_point)
-    #     end
-    # end
+        for i in 1:subarray_size:length(new_points)
+            new_point = new_points[i:min(i+subarray_size-1, end)]
+            check = new_point[1] .< x_UB .&& new_point[1] .> x_LB  .&& new_point[2] .< y_UB .&& new_point[2] .> y_LB
+            if any(check)
+                new_point[4] = 500.0
+            end
+            push!(points_of_interest, new_point)
+            push!(fire_point_xy_ccordinates, new_point[1:2])
+        end
+    end
 
     ##Perform Area Maximization Optimization.
     # 0. Remove covered area.
@@ -206,42 +209,42 @@ for t in 1:Nt_sim
     global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(drone_locs, points_of_interest)
 
 
-    # if t != 1
-    #     for i in 1:N
-    #         #check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2) 
-    #         check = drone_locs[i] .< x_UB .&& drone_locs[i] .> x_LB  .&& drone_locs[i+N] .< y_UB .&& drone_locs[i+N] .> y_LB
+    if t != 1
+        for i in 1:N
+            #check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2) 
+            check = drone_locs[i] .< x_UB .&& drone_locs[i] .> x_LB  .&& drone_locs[i+N] .< y_UB .&& drone_locs[i+N] .> y_LB
 
-    #         if any(check)
+            if any(check)
                 
-    #             global r_max[i] = 10 * tan(FOV/2)
+                global r_max[i] = 10 * tan(FOV/2)
             
-    #         else
+            else
                
-    #             global r_max[i] = h_max * tan(FOV/2)
+                global r_max[i] = h_max * tan(FOV/2)
 
-    #         end
-    #     end
-    # end
+            end
+        end
+    end
 
 
-    # if t != 1
-    #     for i in 1:N
-    #         if abs(10 - drone_locs[i+2N] / tan(FOV/2)) < 1
-    #             check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2)
-    #             if any(check)
+    if t != 1
+        for i in 1:N
+            if abs(10 - drone_locs[i+2N] / tan(FOV/2)) < 1
+                check = drone_locs[i] .< x_UB.+ h_max* tan(FOV/2) .&& drone_locs[i] .> x_LB.-h_max*tan(FOV/2)  .&& drone_locs[i+N] .< y_UB.+h_max* tan(FOV/2) .&& drone_locs[i+N] .> y_LB.-h_max* tan(FOV/2)
+                if any(check)
                 
-    #                 global r_max[i] = 10 * tan(FOV/2)
+                    global r_max[i] = 10 * tan(FOV/2)
                 
-    #             else
+                else
                    
-    #                 global r_max[i] = h_max * tan(FOV/2)
+                    global r_max[i] = h_max * tan(FOV/2)
     
-    #             end
-    #         end
+                end
+            end
 
 
-    #     end
-    # end
+        end
+    end
 
 
 
@@ -252,7 +255,7 @@ for t in 1:Nt_sim
         global STATIC_output, runtime = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R].
     else
         single_input = single_output
-        global STATIC_output, runtime = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3, cons4], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
+        global STATIC_output, runtime = TDM_STATIC_opt.optimize(single_input, AreaMaxObjective, [cons_ext, cons3], cons_prog, N_iter) #output is of the form: [x;y;R]. And we add the 4th constraint.
     end
     
     push!(runtime_data_MADS, runtime)
@@ -270,8 +273,8 @@ for t in 1:Nt_sim
 
 
     ##Feed this optimization output to the trajectory optimization.
-    global x_start = Base_Functions.MADS_to_ALTRO(STATIC_input_MADS)
-    global x_final = Base_Functions.MADS_to_ALTRO(STATIC_output)
+    global x_start = Base_Functions.MADS_to_ALTRO(STATIC_input_MADS, FOV)
+    global x_final = Base_Functions.MADS_to_ALTRO(STATIC_output, FOV)
 
 
     ##Perform Trajectory Optimization.
@@ -520,7 +523,7 @@ end
 
 #println(length(points_of_interest))
 
-println(collision_avoidance_manoeuvres)
+println(collision_avoidance_manoeuvres) #Number of collision avoidance manuevre timesteps.
 
 
 
@@ -581,7 +584,7 @@ end
 
 plot!(p1,
     legend=false,
-    size=(600, 650),
+    size=(600, 600),
     xlabel="x [m]", xguidefontsize=15, xtickfontsize= 10, 
     ylabel="y [m]", yguidefontsize=15, ytickfontsize= 10, 
     xlims = (0, 500),
@@ -590,7 +593,7 @@ plot!(p1,
 )
 
 
-savefig("output1.png") 
+savefig("AreaCoveragePlot.png") 
 
 
 
@@ -749,7 +752,176 @@ plot!(p2, grid = true, gridwidth = 3,
 
 
 
+
+
+# for rnd in eachindex(history_TDM)
+#     this_domain = history_TDM[rnd]
+#     TDM_Functions.show_coverage(circles_pool, this_domain, rnd, Nt_sim, N)
+# end
+
+# plot!(p1,
+#     legend=false,
+#     size=(600, 650),
+#     xlabel="x [m]", xguidefontsize=15, xtickfontsize= 10, 
+#     ylabel="y [m]", yguidefontsize=15, ytickfontsize= 10, 
+#     xlims = (0, 500),
+#     ylims = (0, 500),
+#     title = "Coverage Area Plot of UAV Targets"
+# )
+
+
+
+
+
+
 savefig(p2, "FullSimulationTrajectories.html")
+
+
+
+
+
+### Plot Fire and Area Covered.
+
+p7 = plot()
+
+# Sample data for the heatmap
+x_heatmap = LinRange(0, 500, 100)
+y_heatmap = LinRange(0, 500, 100)
+z_heatmap = zeros(length(y_heatmap), length(x_heatmap))#[0 for x in x_heatmap, y in y_heatmap]
+
+z_heatmap[1,5] = 1
+
+grid_size = [100,100]
+
+# Initialize the grid
+grid = ones(Int(grid_size[1]),Int(grid_size[2]))
+
+for p in fire_point_xy_ccordinates
+    grid[Int((p[1]+(5/2))/5), Int((p[2]+(5/2))/5)] = 2
+end
+
+
+xrange = (0, 500)
+yrange = (0, 500)
+large_grid = kron(grid, ones(Int, 5, 5))
+c = cgrad([:green,:red], [0.5], categorical = true)
+
+# Create the heatmap
+heatmap!(p7, 1:grid_size[2], 1:grid_size[1], large_grid',color=c, legend=false, xlims=xrange, ylims=yrange,
+aspect_ratio=:equal, size=(1000, 1000), cbar=false)
+# xticks!(0:20:100, 0:100:500)
+# yticks!(0:20:100, 0:100:500)
+
+
+
+
+
+
+#Plot circles to show area covered.
+all_center_x=[]
+all_center_y=[]
+all_center_z=[]
+all_center_R=[]
+
+for j in 1:N                                    #N is the number of UAVs.
+    xs_circle = []
+    ys_circle = []
+    Rs_circle = []
+    zs_circle = []
+    for i in eachindex(single_input_pb)
+        circle_in = single_input_pb[i]
+        push!(xs_circle, circle_in[j])
+        push!(ys_circle, circle_in[j + N])
+        push!(Rs_circle, circle_in[j + 2*N])
+        z = circle_in[j + 2*N]/tan(FOV/2)
+        push!(zs_circle, z)
+    end
+    push!(all_center_x, xs_circle)
+    push!(all_center_y, ys_circle)
+    push!(all_center_z, zs_circle)
+    push!(all_center_R, Rs_circle)
+end
+global palettes = ["blue", "green", "orange", "purple", "cyan", "pink", "gray", "olive"]
+
+
+
+for j in 1:N
+    this_color = palettes[mod1(j,length(palettes))]
+    #plot!(p7, all_center_x[j], all_center_y[j], legend = false, color=this_color)
+
+
+    for i in 1:5:length(single_input_pb)
+        Base_Functions.plot_circleblack(all_center_x[j][i], all_center_y[j][i], all_center_R[j][i], p7, this_color)
+    end
+
+
+    # plot!(p1, all_center_x[i][1:end], all_center_y[i][1:end], 
+    #     aspect_ratio=1, color = this_color,
+    #     markershape =:cross, 
+    #     markersize =:1,
+    #     markerstrokestyle = :solid,
+    #     label =:none, 
+    #     legend =:none)
+end
+
+# for rnd in eachindex(history_TDM)
+#     this_domain = history_TDM[rnd]
+#     TDM_Functions.show_coverage(circles_pool, this_domain, rnd, Nt_sim, N)
+# end
+
+##Plot area of high interest.
+x_values = [x_LB[1], x_LB[1], x_UB[1], x_UB[1],x_LB[1]]  # Replace x1, x2, x3, x4 with your x coordinates
+y_values = [y_LB[1], y_UB[1], y_UB[1], y_LB[1], y_LB[1]]  # Replace y1, y2, y3, y4 with your y coordinates
+
+# Plot the rectangle
+plot!(p7,x_values, y_values, legend=false, linewidth=5, color="yellow")
+
+plot!(p7,
+    legend=false,
+    size=(600, 600),
+    xlabel="x [m]", xguidefontsize=15, xtickfontsize= 10, 
+    ylabel="y [m]", yguidefontsize=15, ytickfontsize= 10, 
+    xlims = (0, 500),
+    ylims = (0, 500)
+)
+
+# Add a custom legend
+# annotate!(p7,
+#     9, 1,   # Position of the legend (adjust as needed)
+#     text("My Custom Legend", :right, :bottom, 10, :black)
+# )
+annotate!(p7,
+    500, 490, # Position of the first label
+    text("Area of Interest", :right, :top, 10, :red)
+)
+annotate!(p7,
+    500, 475, # Position of the second label
+    text("Area of High Interest", :right, :top, 10, :yellow)
+)
+annotate!(p7,
+    500, 460, # Position of the second label
+    text("Covered Area", :right, :top, 10, :black, bold=true)
+)
+
+savefig(p7, "AreaCoverage.html")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # # #3. Plotting the target positions for the drones at each timestep.

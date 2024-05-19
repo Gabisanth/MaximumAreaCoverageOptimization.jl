@@ -309,6 +309,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     ####ALTERNATIVE VERSION:
     x0 = SVector(MAV.StateHistory[end])  # initial 3D positions of MAV
     xf = SVector(MAV.TargetState)         # final 3D positions of MAV(CONSTANT along the horizon)
+    print(xf)
 
 
     n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4 (+1 slack variable.)
@@ -449,7 +450,7 @@ Transforms our MADS data structure to the ALTRO data structure
 """
 function MADS_to_ALTRO(z::Vector{Float64})
     N = Int(length(z)/3)
-    FOV = 80/180*pi
+    FOV = 120/180*pi
 
     x = Vector{RBState}()
     for i in range(1,stop=N)
