@@ -128,7 +128,7 @@ function plot_circleblack(center_x, center_y, radius, plot_object, this_color)
     x = center_x .+ radius * cos.(θ)
     y = center_y .+ radius * sin.(θ)
 
-    plot!(plot_object, x, y, legend = false, color=:black, fill = true)
+    plot!(plot_object, x, y, legend = false, color=:black, fill = true, label=false)
 
 end
 

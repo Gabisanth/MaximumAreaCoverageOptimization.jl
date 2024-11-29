@@ -7,6 +7,7 @@ using DirectSearch
 
 include("Base_Functions.jl")
 using .Base_Functions
+include("AreaCoverageCalculation.jl")
 
 using Random
 using LinearAlgebra
@@ -67,7 +68,36 @@ function DirectSearch.GenerateDirections(p::DirectSearch.AbstractProblem, DG::Cu
 end
 
 
+"""
+    AreaMaxObjective(x)
 
+Define Objective Function for area coverage optimization step.
+
+# Arguments:
+
+    - 'x': Vector of UAV locations in the form [x;y;r]
+"""
+# Define Area maximization objective function.
+
+function createObjective(cells, N, r_max)
+    function AreaMaxObjective(x) #x is the vector of UAV locations in the form [x;y;r]
+        #global points_of_interest = AreaCoverageCalculation.createPOI(1.0,1.0,N,N) #Create initial set of points of interest.
+        objective_circles = AreaCoverageCalculation.make_circles(x) #output is of the form: Vector of Circle objects
+        objective_circles = AreaCoverageCalculation.make_MADS(objective_circles) #output is of the form: Vector of circle coordinates and radii [x;y;r]
+        area_covered = AreaCoverageCalculation.calculateArea(objective_circles,cells.points_of_interest) #ouputs the area covered by circles.
+    
+        violation = 0.0
+        for i in 1:N
+            #violation += max((x[i+2*N] - r_max[i]), 0.0) #violate only if it goes above the height limit.
+            violation += abs(x[i+2*N] - r_max[i]) #violate if UAV is not held at the max height.
+        end
+    
+    
+        #global points_of_interest = AreaCoverageCalculation.rmvCoveredPOI(objective_circles, points_of_interest)
+        return -area_covered + violation*1e5
+    end
+    return AreaMaxObjective
+end
 
 
 
@@ -96,7 +126,7 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter)
     SetIterationLimit(p, N_iter)
     
     #DirectSearch.SetMinimumMeshSize(p, 5.0)
-    SetMaxEvals(p) #Uses parallelisation by using number of threads available.
+    #SetMaxEvals(p) #Uses parallelisation by using number of threads available.
 
     for i in 1:length(input)
         #if i < 9
@@ -191,116 +221,5 @@ function optimize(input, obj, cons_ext, cons_prog, N_iter)
 
 end
 
-
-# """
-#     check(input,output,R_lim,domain_x,domain_y)
-
-# Checks if any Circle objects are contained by other circles, and regenerates them (randomly)
-
-# # Arguments:
-#     - 'input': Pre-optimized circles
-#     - 'output': The current solution of post-optimized circles 
-#                 (Concatenated vector of (x,y,R) values, obtained from MADS solver output)
-#     - 'r_min': Minimum radius for detection circle
-#     - 'r_max': Maximum radius for detection circle
-#     - 'd_lim': displacement limit
-# """
-# function check(input, output, r_min, r_max, d_lim, circles_pool)
-#     input_circles = make_circles(input)
-#     output_circles = make_circles(output)
-
-#     N = length(output_circles) # input and output should have the same number of circles
-
-#     is_contained = Vector{Bool}([false for i in 1:N])
-#     # is_pure_contained = Vector{Bool}([false for i in 1:N])
-#     no_movement = Vector{Bool}([false for i in 1:N])
-
-#     # Should not contained by the other UAVs at current epoch
-#     for i in 1:N
-#         for j in i+1:N
-#             if contained(output_circles[i], output_circles[j]) == output_circles[i]
-#                 is_contained[i] = true
-#             elseif contained(output_circles[i], output_circles[j]) == output_circles[j]
-#                 is_contained[j] = true
-#             end
-#         end
-#     end
-
-#     # Should not contained by the detection cirlce of same UAV at previous epoch
-#     for i in 1:N
-#         if output_circles[i].R<=input_circles[i].R || 
-#             (output_circles[i].x==input_circles[i].x && output_circles[i].y==input_circles[i].y)
-#             no_movement[i] = true
-#         end
-#     end
-
-#     # for i in 1:N
-#     #     output[i] = input_circles[i].x + 30                           # x
-#     #     output[N + i] = input_circles[i].y                   # y
-#     #     output[2*N + i] = r_max  # R
-#     # end
-
-
-
-
-#     # if any(is_contained) || any(no_movement)
-#     #     println("is_contained: ",is_contained)
-#     #     println("no_movement: ",no_movement)
-#     #     global FOV = 80 /180 *pi
-#     #     for i in 1:N
-#     #         if is_contained[i] == true || no_movement[i] == true 
-
-#     #             global success = true
-#     #             for angle in 1:1:360
-#     #                 success = true
-#     #                 movement = 0.9*d_lim
-
-#     #                 this_x = output[i] + movement * √2/√3 * cosd(angle)
-#     #                 this_y = output[N + i] + movement * √2/√3 * sind(angle)
-#     #                 this_r = output[2*N + i] + movement * 1/√3 * tan(FOV/2)
-
-#     #                 global this_circle = Base_Functions.make_circles([this_x, this_y, this_r])
-    
-#     #                 for m in eachindex(circles_pool)
-#     #                     if Base_Functions.intersection(this_circle[1], circles_pool[m]) !== nothing ||
-#     #                         Base_Functions.contained(this_circle[1], circles_pool[m]) !== nothing
-#     #                         success =  false
-#     #                         break
-#     #                     end
-#     #                 end
-
-#     #                 if success == true
-#     #                     output[i] = this_x
-#     #                     output[N + i] = this_y
-#     #                     output[2*N + i] = this_r
-#     #                     println("Reallocate successful!")
-#     #                     break
-#     #                 end
-#     #             end
-
-
-#     #             # if success == false
-#     #             #     println("Reallocate fail! Interpolate outwards!")
-#     #             #     direction = [output[i], output[N+i], output[2*N+i]/tan(FOV/2)]/sqrt((output[i])^2 + (output[N+i])^2+ (output[2*N+i]/tan(FOV/2))^2)
-#     #             #     increment = d_lim *direction
-
-#     #             #     output[i] = output[i] + increment[1]                             # x
-#     #             #     output[N + i] = output[N + i] + increment[2]                    # y
-#     #             #     output[2*N + i] = min(output[2*N + i] + increment[3] *tan(FOV/2) *0.9 ,  r_max)   # R
-#     #             # end
-#     #         end
-#     #     end
-
-#     #     return true, output                          
-#     #     # true: has contained circles; output the current circles group in MADS format 
-#     # else
-#     #     return false, output #[]
-#     #     # true: has no contained circle; output blank array
-#     # end
-
-
-    
-#     return true, output
-# end
 
 end # module end

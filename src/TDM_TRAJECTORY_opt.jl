@@ -25,7 +25,7 @@ include("DroneModelCreation.jl")
 
 An object describing an MAV
 
-Attributes:
+Attributes:g
     - 'Mass::Float64': Mass
     - 'J::Diagonal': Diagonal mass inertia matrix
     - 'Gravity::SVector': Gravity vector
@@ -45,7 +45,6 @@ mutable struct Trajectory_Problem
     kf::Float64             # CONST
     km::Float64             # CONST
     Model::Quadrotor
-
     StateHistory::Vector{RBState}
     PredictedStates::Vector{RBState}
 
@@ -194,7 +193,7 @@ Performs a trajectory optimization of the MAV from StateHistory[end] (current st
     - 'Nt::Int64': Number of timesteps
     - 'collision::Vector{Any}': Vector of form [Boolean,[x,y,z]], where the Boolean value describes if a collision is imminent with any other MAVs at the location (x,y,z)
 """
-function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, collision_avoidance_mode::Bool)
+function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, collision_avoidance_mode::Bool, update_history::Bool)
 
 #     x0 = SVector(MAV.StateHistory[end])  # initial 3D positions of MAV
 #     xf = SVector(MAV.TargetState)         # final 3D positions of MAV
@@ -309,7 +308,7 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     ####ALTERNATIVE VERSION:
     x0 = SVector(MAV.StateHistory[end])  # initial 3D positions of MAV
     xf = SVector(MAV.TargetState)         # final 3D positions of MAV(CONSTANT along the horizon)
-    print(xf)
+    #println("Target State: ",xf)
 
 
     n,m = size(MAV.Model)       # n: number of states 13; m: number of controls 4 (+1 slack variable.)
@@ -319,26 +318,31 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
     weight_Q = 1.0 #1e-10 #Penalise the sum of state errors in the states.
     weight_R = 1.0 #1e-10 #Penalise controller effort.
     MU_exact = 100#100.0 #penalty factor for the soft constraint.
-    MU_quadratic = 1000#1000.0
+    MU_quadratic = 1000.0#1000.0
     weight_Qf = 1.0 #Penalise current state error.
 
     # Constraints
     cons = ConstraintList(num_states, num_controls, Nt)
     
     
-    # #Add goal constraint.
+    # # #Add goal constraint.
     # goalcon = GoalConstraint(xf, 8:10)
     # add_constraint!(cons, goalcon, 1:Nt)  # add to the last time step
 
     if collision_avoidance_mode == false
-        Q = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])
+        Q = Diagonal(SA[0,0,0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q])
         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
-        Qf = Diagonal(SA[weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, 0.0, 0.0, 0.0, weight_Q, weight_Q, weight_Q])#for terminal cost.  #xf: 0,0,0, Qf 1,1,1
+        Qf = Diagonal(SA[0,0,0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q])#for terminal cost.  #xf: 0,0,0, Qf 1,1,1
+        # #Add goal constraint.
+        # goalcon = GoalConstraint(xf, 1:3)
+        # add_constraint!(cons, goalcon, 1:Nt)  # add to the last time step
     else
-
         Q = Diagonal(SA[0, 0, 0, weight_Q, weight_Q, weight_Q, weight_Q, weight_Q*1, weight_Q*1, weight_Q*1, weight_Q, weight_Q, weight_Q])
         R = Diagonal(SA[weight_R, weight_R, weight_R, weight_R, MU_quadratic])
         Qf =Diagonal(SA[0, 0, 0, weight_Qf, weight_Qf, weight_Qf, weight_Qf, weight_Qf*1, weight_Qf*1, weight_Qf*1, weight_Qf, weight_Qf, weight_Qf])
+        #Add goal constraint.
+        goalcon = GoalConstraint(xf, 8:10)
+        add_constraint!(cons, goalcon, 1:Nt)  # add to the last time step
     end
     
     ##Create own objective function. To include slack variable for soft constraint.
@@ -415,15 +419,18 @@ function optimize(MAV::Trajectory_Problem, tf::Float64, Nt::Int64, Nm::Int64, co
 
     solve!(altro);
 
-    X = states(altro);
+    if update_history
+        X = states(altro);
 
-    MAV.PredictedStates = X
+        MAV.PredictedStates = X
 
-    for i in 2:Nm
-        push!(MAV.StateHistory, X[i])
+        for i in 2:Nm
+            push!(MAV.StateHistory, X[i])
+        end
+
+        return X[2]
     end
-
-    return X[2]
+        
 
 
 end
